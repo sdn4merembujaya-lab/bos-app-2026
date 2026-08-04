@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist SPJ Otomatis — BOS 2026</title>
+<style>
+  :root{
+    --teal-900:#0b3a37;
+    --teal-700:#0f766e;
+    --teal-600:#0d9488;
+    --teal-100:#e6f5f3;
+    --green-600:#16a34a;
+    --green-100:#eafbef;
+    --amber-600:#b45309;
+    --amber-100:#fef3e0;
+    --ink-900:#16241f;
+    --ink-600:#4a5a55;
+    --ink-400:#8a9994;
+    --line:#d7e6e2;
+    --bg:#f6faf9;
+    --card:#ffffff;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink-900);
+    font-family:'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+    line-height:1.45;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  .app-header{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    background:linear-gradient(120deg,var(--teal-700),var(--teal-900));
+    color:#fff;padding:20px 26px;border-radius:14px;margin-bottom:22px;
+    box-shadow:0 8px 24px -12px rgba(15,118,110,.45);
+  }
+  .app-header h1{margin:0;font-size:1.32rem;letter-spacing:.2px;}
+  .app-header p{margin:4px 0 0;font-size:.85rem;color:#cfeee9;}
+  .badge{
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);
+    padding:6px 12px;border-radius:999px;font-size:.72rem;white-space:nowrap;
+  }
+
+  .note{
+    background:var(--teal-100);border:1px solid var(--line);color:var(--teal-900);
+    padding:12px 16px;border-radius:10px;font-size:.85rem;margin-bottom:20px;
+  }
+  .note b{color:var(--teal-700);}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;flex-wrap:wrap;gap:10px;}
+  .toolbar h2{font-size:1rem;margin:0;color:var(--teal-900);}
+  .toolbar .sub{font-size:.78rem;color:var(--ink-600);}
+
+  button{
+    font-family:inherit;cursor:pointer;border:none;border-radius:8px;
+    padding:9px 14px;font-size:.82rem;font-weight:600;
+  }
+  .btn-primary{background:var(--teal-700);color:#fff;}
+  .btn-primary:hover{background:var(--teal-600);}
+  .btn-ghost{background:#fff;color:var(--teal-700);border:1px solid var(--line);}
+  .btn-ghost:hover{background:var(--teal-100);}
+  .btn-danger{background:#fff;color:#b42318;border:1px solid #f3d0cc;}
+  .btn-danger:hover{background:#fdecea;}
+  .btn-sm{padding:5px 10px;font-size:.72rem;}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 1px 0 var(--line);}
+  thead th{
+    background:var(--teal-700);color:#fff;font-size:.72rem;text-transform:uppercase;
+    letter-spacing:.04em;padding:10px 10px;text-align:left;font-weight:700;
+  }
+  tbody td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:.85rem;vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#fbfdfc;}
+
+  input[type=text], input[type=number], select{
+    width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:6px;
+    font-size:.82rem;font-family:inherit;color:var(--ink-900);background:#fff;
+  }
+  input:focus, select:focus{outline:2px solid var(--teal-600);outline-offset:1px;}
+  .col-no{width:34px;text-align:center;color:var(--ink-400);}
+  .col-jumlah{width:130px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;}
+  .col-aksi{width:150px;}
+  .row-actions{display:flex;gap:6px;}
+
+  .status-pill{
+    display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+    font-size:.7rem;font-weight:700;
+  }
+  .status-belum{background:var(--amber-100);color:var(--amber-600);}
+  .status-lengkap{background:var(--green-100);color:var(--green-600);}
+  .status-kosong{background:#f1f3f2;color:var(--ink-400);}
+
+  .cards{display:flex;flex-direction:column;gap:14px;margin-top:18px;}
+  .checklist-card{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  }
+  .cc-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:13px 16px;cursor:pointer;background:#fcfefe;
+  }
+  .cc-head:hover{background:var(--teal-100);}
+  .cc-title{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .cc-title .kode{font-size:.7rem;color:var(--ink-400);font-weight:700;letter-spacing:.03em;}
+  .cc-title .uraian{font-size:.88rem;font-weight:600;color:var(--ink-900);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px;}
+  .cc-jenis{font-size:.74rem;color:var(--teal-700);font-weight:600;}
+  .cc-right{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+  .progress-wrap{display:flex;align-items:center;gap:8px;}
+  .progress-track{width:90px;height:6px;background:#e6ece9;border-radius:99px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--green-600);border-radius:99px;transition:width .25s ease;}
+  .progress-text{font-size:.72rem;color:var(--ink-600);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .chev{transition:transform .2s ease;color:var(--ink-400);font-size:.8rem;}
+  .chev.open{transform:rotate(90deg);}
+
+  .cc-body{display:none;padding:4px 16px 16px;border-top:1px solid var(--line);}
+  .cc-body.open{display:block;}
+  ul.spj-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:7px;}
+  ul.spj-list li{
+    display:flex;align-items:flex-start;gap:9px;font-size:.83rem;color:var(--ink-900);
+    padding:7px 9px;border-radius:7px;background:#fbfdfc;border:1px solid transparent;
+  }
+  ul.spj-list li:hover{border-color:var(--line);}
+  ul.spj-list input[type=checkbox]{margin-top:2px;width:15px;height:15px;accent-color:var(--teal-600);flex-shrink:0;}
+  ul.spj-list li.done label{color:var(--ink-600);text-decoration:line-through;text-decoration-color:var(--ink-400);}
+  ul.spj-list label{cursor:pointer;flex:1;}
+
+  .cc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);}
+  .cc-footer .hint{font-size:.72rem;color:var(--ink-400);}
+
+  .empty{
+    text-align:center;padding:44px 20px;color:var(--ink-400);font-size:.86rem;
+    background:var(--card);border:1px dashed var(--line);border-radius:12px;margin-top:18px;
+  }
+
+  select.jenis-select{max-width:230px;}
+
+  @media (max-width:760px){
+    .app-header{flex-direction:column;align-items:flex-start;}
+    table, thead, tbody, th, td, tr{display:block;}
+    thead{display:none;}
+    tbody tr{margin-bottom:10px;border-bottom:2px solid var(--line);display:block;padding:8px 0;}
+    tbody td{border-bottom:none;padding:6px 10px;}
+    tbody td::before{content:attr(data-label);display:block;font-size:.68rem;color:var(--ink-400);font-weight:700;text-transform:uppercase;margin-bottom:3px;}
+    .col-jumlah{text-align:left;}
+    .cc-title .uraian{max-width:100%;white-space:normal;}
+  }
+
+  @media print{
+    body{background:#fff;}
+    .app-header, .note, .toolbar button, .row-actions, .cc-footer button{display:none !important;}
+    .cc-body{display:block !important;}
+    .chev{display:none;}
+    .checklist-card{break-inside:avoid;border:1px solid #999;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="app-header">
+    <div>
+      <h1>Checklist SPJ Otomatis</h1>
+      <p>Muncul otomatis per baris RKAS, sesuai jenis kegiatan — BOS 2026 · SD Negeri 4 Merembujaya</p>
+    </div>
+    <span class="badge">TERSIMPAN DI PERANGKAT INI</span>
+  </div>
+
+  <div class="note">
+    <b>Cara pakai:</b> isi baris RKAS seperti biasa, lalu pilih <b>Jenis Kegiatan</b> pada tiap baris. Daftar kelengkapan
+    SPJ akan muncul otomatis di bawah tabel sesuai jenis kegiatan yang dipilih — tinggal dicentang saat dokumennya sudah ada.
+  </div>
+
+  <div class="toolbar">
+    <div>
+      <h2>RKAS &amp; Kode Rekening</h2>
+      <div class="sub">Tambahkan baris, lalu pilih jenis kegiatan untuk memunculkan checklist SPJ</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-ghost" id="btnPrint">Cetak Checklist</button>
+      <button class="btn-primary" id="btnAddRow">+ Tambah Baris RKAS</button>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table id="rkasTable">
+      <thead>
+        <tr>
+          <th class="col-no">No</th>
+          <th>Kode Rekening</th>
+          <th>Uraian</th>
+          <th>Jenis Kegiatan (untuk SPJ)</th>
+          <th class="col-jumlah">Jumlah (Rp)</th>
+          <th>Kelengkapan SPJ</th>
+          <th class="col-aksi">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="rkasBody"></tbody>
+    </table>
+  </div>
+
+  <div class="toolbar" style="margin-top:26px;">
+    <div>
+      <h2>Detail Checklist per Kegiatan</h2>
+      <div class="sub">Klik salah satu kartu untuk membuka / menutup daftar kelengkapan</div>
+    </div>
+  </div>
+
+  <div id="cardsWrap"></div>
+  <div class="empty" id="emptyState">Belum ada baris RKAS dengan jenis kegiatan terpilih.</div>
+
+</div>
+
+<script>
+// ---------- Data acuan kelengkapan SPJ per jenis kegiatan ----------
+const SPJ_REF = {
+  "honorarium": {
+    label: "Honorarium Pendidik & Tenaga Kependidikan Non ASN",
+    items: [
+      "Kwitansi per orang / per bulan",
+      "Daftar penerimaan honor per orang / per bulan",
+      "SK Kepala Sekolah tentang Pendidik dan Tenaga Kependidikan Non ASN yang dibayar melalui dana BOS",
+      "Daftar hadir Pendidik dan Tenaga Kependidikan Non ASN"
+    ]
+  },
+  "perjalanan-dinas": {
+    label: "Perjalanan Dinas",
+    items: [
+      "Kwitansi",
+      "Daftar penerimaan transport",
+      "Rincian SPPD (Surat Perintah Perjalanan Dinas)",
+      "SPPD yang sudah ditandatangani / stempel dari tempat yang dituju",
+      "Surat Perintah Tugas",
+      "Daftar hadir (apabila diberikan kepada peserta kegiatan)",
+      "Surat undangan (jika sosialisasi) atau surat dasar pelaksanaan tugas (jika bukan sosialisasi)",
+      "Laporan hasil perjalanan dinas",
+      "Dokumentasi / foto kegiatan"
+    ]
+  },
+  "makan-minum": {
+    label: "Pembelian Makanan dan Minuman",
+    items: [
+      "Kwitansi",
+      "Surat pesanan",
+      "Dokumen perencanaan",
+      "BAST (Berita Acara Serah Terima)",
+      "Nota lengkap dengan paraf dan stempel basah dari catering / warung makan",
+      "Undangan",
+      "Notulen (tanggal/hari, waktu mulai, peserta, hasil kegiatan, waktu selesai)",
+      "Daftar hadir peserta",
+      "Tanda terima konsumsi",
+      "Dokumentasi / foto kegiatan",
+      "Bukti setor pajak (Daerah dan PPh 23)"
+    ]
+  },
+  "belanja-barang": {
+    label: "Belanja Pengadaan Barang",
+    items: [
+      "Bukti transaksi (utamakan belanja di SIPLah)",
+      "Kwitansi",
+      "Dokumen perencanaan PBJ Satdik",
+      "Dokumen hasil perbandingan & hasil negosiasi",
+      "Surat pemesanan",
+      "Berita acara serah terima",
+      "Bukti pembayaran",
+      "Foto barang (tampak spesifikasi)",
+      "Bukti setor pajak",
+      "Jika non-SIPLah: kelengkapan dokumen harus sama dengan SIPLah"
+    ]
+  },
+  "jasa-tukang": {
+    label: "Jasa Tukang / Ongkos Tukang",
+    items: [
+      "Kwitansi",
+      "Daftar penerimaan jasa tukang",
+      "Daftar hadir tukang per hari",
+      "SPK (Surat Perintah Kerja)",
+      "Dokumentasi / foto sebelum dan sesudah pemeliharaan (menunjukkan persentase pekerjaan)"
+    ]
+  },
+  "pelatih-ekskul": {
+    label: "Jasa Pelatih Ekstrakurikuler",
+    items: [
+      "Kwitansi",
+      "Daftar penerimaan jasa pelatih",
+      "Sertifikat pelatih",
+      "SK Kepala Sekolah tentang penetapan pelatih ekstrakurikuler",
+      "Program kegiatan",
+      "Jadwal latihan",
+      "Daftar hadir pelatih & siswa",
+      "Dokumentasi saat latihan",
+      "Bukti setor pajak"
+    ]
+  },
+  "pendaftaran-lomba": {
+    label: "Pendaftaran Lomba-Lomba",
+    items: [
+      "Kwitansi",
+      "Kwitansi panjang dari panitia lomba",
+      "Daftar penerimaan pendaftaran",
+      "Formulir pendaftaran (berisi identitas peserta)"
+    ]
+  },
+  "retribusi-sampah": {
+    label: "Jasa Retribusi / Pengangkutan Sampah",
+    items: [
+      "Kwitansi",
+      "Daftar penerimaan jasa retribusi sampah",
+      "SPK (Surat Perintah Kerja)",
+      "Daftar hadir pengambilan sampah",
+      "Dokumentasi / foto"
+    ]
+  },
+  "langganan-daya": {
+    label: "Langganan Daya dan Jasa (Listrik-Air-Indihome)",
+    items: [
+      "Kwitansi",
+      "Bukti pembayaran (struk)",
+      "Surat perjanjian kerja sama (jika langganan menumpang)",
+      "Jika ada selisih anggaran vs struk, ubah melalui pergeseran anggaran"
+    ]
+  },
+  "paket-data": {
+    label: "Paket Data dan Langganan Koran",
+    items: [
+      "Kwitansi",
+      "Bukti pembayaran (struk)"
+    ]
+  },
+  "sewa": {
+    label: "Sewa",
+    items: [
+      "Kwitansi",
+      "Daftar penerimaan",
+      "Kwitansi panjang",
+      "SPK (Surat Perintah Kerja)",
+      "Foto"
+    ]
+  }
+};
+
+const STORAGE_KEY = "bosApp2026_rkasChecklistSPJ";
+
+function fmtRupiah(n){
+  n = Number(n) || 0;
+  return "Rp " + n.toLocaleString("id-ID");
+}
+
+function loadRows(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return [];
+}
+function saveRows(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+}
+
+let rows = loadRows();
+if(rows.length === 0){
+  rows = [
+    { id: cryptoId(), kode: "", uraian: "", jenis: "", jumlah: "", checked: {} }
+  ];
+}
+
+function cryptoId(){
+  return "r" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+}
+
+function jenisOptions(selected){
+  let html = '<option value="">— Pilih jenis kegiatan —</option>';
+  for(const key in SPJ_REF){
+    html += `<option value="${key}" ${selected===key?"selected":""}>${SPJ_REF[key].label}</option>`;
+  }
+  return html;
+}
+
+function statusPill(row){
+  if(!row.jenis) return '<span class="status-pill status-kosong">Belum dipilih</span>';
+  const total = SPJ_REF[row.jenis].items.length;
+  const done = Object.values(row.checked||{}).filter(Boolean).length;
+  if(done === 0) return '<span class="status-pill status-belum">0 / '+total+'</span>';
+  if(done === total) return '<span class="status-pill status-lengkap">Lengkap ✓</span>';
+  return '<span class="status-pill status-belum">'+done+' / '+total+'</span>';
+}
+
+function render(){
+  const tbody = document.getElementById("rkasBody");
+  tbody.innerHTML = "";
+  rows.forEach((row, idx) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="col-no" data-label="No">${idx+1}</td>
+      <td data-label="Kode Rekening"><input type="text" value="${escapeAttr(row.kode)}" data-field="kode" data-id="${row.id}" placeholder="mis. 5.1.02.01"></td>
+      <td data-label="Uraian"><input type="text" value="${escapeAttr(row.uraian)}" data-field="uraian" data-id="${row.id}" placeholder="Uraian kegiatan"></td>
+      <td data-label="Jenis Kegiatan">
+        <select class="jenis-select" data-field="jenis" data-id="${row.id}">${jenisOptions(row.jenis)}</select>
+      </td>
+      <td class="col-jumlah" data-label="Jumlah (Rp)"><input type="number" value="${row.jumlah}" data-field="jumlah" data-id="${row.id}" placeholder="0"></td>
+      <td data-label="Kelengkapan SPJ">${statusPill(row)}</td>
+      <td class="col-aksi" data-label="Aksi">
+        <div class="row-actions">
+          <button class="btn-ghost btn-sm" data-action="toggle-card" data-id="${row.id}">Buka</button>
+          <button class="btn-danger btn-sm" data-action="delete" data-id="${row.id}">Hapus</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  renderCards();
+  bindInputs();
+}
+
+function escapeAttr(s){
+  return (s||"").toString().replace(/"/g,"&quot;");
+}
+function escapeHtml(s){
+  return (s||"").toString()
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+let openCards = new Set();
+
+function renderCards(){
+  const wrap = document.getElementById("cardsWrap");
+  const empty = document.getElementById("emptyState");
+  wrap.innerHTML = "";
+  const withJenis = rows.filter(r => r.jenis);
+
+  if(withJenis.length === 0){
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  withJenis.forEach(row => {
+    const ref = SPJ_REF[row.jenis];
+    const total = ref.items.length;
+    const done = Object.values(row.checked||{}).filter(Boolean).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    const isOpen = openCards.has(row.id);
+
+    const card = document.createElement("div");
+    card.className = "checklist-card";
+    card.innerHTML = `
+      <div class="cc-head" data-action="toggle-card" data-id="${row.id}">
+        <div class="cc-title">
+          <span class="kode">${escapeHtml(row.kode) || "TANPA KODE"} ${row.uraian ? "· " + escapeHtml(row.uraian) : ""}</span>
+          <span class="cc-jenis">${ref.label}</span>
+        </div>
+        <div class="cc-right">
+          <div class="progress-wrap">
+            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <span class="progress-text">${done}/${total}</span>
+          </div>
+          <span class="chev ${isOpen?"open":""}">▶</span>
+        </div>
+      </div>
+      <div class="cc-body ${isOpen?"open":""}" id="body-${row.id}">
+        <ul class="spj-list">
+          ${ref.items.map((item, i) => {
+            const checked = !!(row.checked && row.checked[i]);
+            return `<li class="${checked?"done":""}">
+              <input type="checkbox" id="chk-${row.id}-${i}" data-action="check" data-id="${row.id}" data-idx="${i}" ${checked?"checked":""}>
+              <label for="chk-${row.id}-${i}">${escapeHtml(item)}</label>
+            </li>`;
+          }).join("")}
+        </ul>
+        <div class="cc-footer">
+          <span class="hint">Dokumen tercentang tersimpan otomatis di perangkat ini.</span>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function bindInputs(){
+  document.querySelectorAll('[data-field]').forEach(el => {
+    el.addEventListener("change", (e) => {
+      const id = e.target.getAttribute("data-id");
+      const field = e.target.getAttribute("data-field");
+      const row = rows.find(r => r.id === id);
+      if(!row) return;
+      row[field] = e.target.value;
+      if(field === "jenis"){
+        row.checked = {};
+        openCards.add(id);
+      }
+      saveRows();
+      render();
+    });
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const toggleBtn = e.target.closest('[data-action="toggle-card"]');
+  if(toggleBtn){
+    const id = toggleBtn.getAttribute("data-id");
+    if(openCards.has(id)) openCards.delete(id); else openCards.add(id);
+    renderCards();
+    return;
+  }
+  const delBtn = e.target.closest('[data-action="delete"]');
+  if(delBtn){
+    const id = delBtn.getAttribute("data-id");
+    if(confirm("Hapus baris RKAS ini beserta checklist SPJ-nya?")){
+      rows = rows.filter(r => r.id !== id);
+      openCards.delete(id);
+      saveRows();
+      render();
+    }
+    return;
+  }
+  const chk = e.target.closest('[data-action="check"]');
+  if(chk){
+    const id = chk.getAttribute("data-id");
+    const idx = chk.getAttribute("data-idx");
+    const row = rows.find(r => r.id === id);
+    if(!row) return;
+    row.checked = row.checked || {};
+    row.checked[idx] = chk.checked;
+    saveRows();
+    render();
+  }
+});
+
+document.getElementById("btnAddRow").addEventListener("click", () => {
+  rows.push({ id: cryptoId(), kode: "", uraian: "", jenis: "", jumlah: "", checked: {} });
+  saveRows();
+  render();
+});
+
+document.getElementById("btnPrint").addEventListener("click", () => {
+  openCards = new Set(rows.filter(r=>r.jenis).map(r=>r.id));
+  renderCards();
+  window.print();
+});
+
+render();
+</script>
+</body>
+</html>
