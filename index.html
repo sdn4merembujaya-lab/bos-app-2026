@@ -27,9 +27,10 @@
       <button class="nav-item" data-page="profil"><span class="nav-num">02</span>Profil Sekolah</button>
       <button class="nav-item" data-page="penerimaan"><span class="nav-num">03</span>Penerimaan Dana</button>
       <button class="nav-item" data-page="bku"><span class="nav-num">04</span>Buku Kas Umum</button>
-      <button class="nav-item" data-page="rkas"><span class="nav-num">05</span>RKAS &amp; Komponen</button>
-      <button class="nav-item" data-page="laporan"><span class="nav-num">06</span>Laporan &amp; Cetak</button>
-      <button class="nav-item" data-page="backup"><span class="nav-num">07</span>Cadangkan Data</button>
+      <button class="nav-item" data-page="rkas"><span class="nav-num">05</span>RKAS &amp; Kode Rekening</button>
+      <button class="nav-item" data-page="nota"><span class="nav-num">06</span>Nota Pesanan</button>
+      <button class="nav-item" data-page="laporan"><span class="nav-num">07</span>Laporan &amp; Cetak</button>
+      <button class="nav-item" data-page="backup"><span class="nav-num">08</span>Cadangkan Data</button>
     </nav>
 
     <div class="sidebar-foot">
@@ -187,24 +188,115 @@
       <!-- RKAS -->
       <section class="page" id="page-rkas">
         <div class="page-head">
-          <h2>RKAS &amp; Komponen Kegiatan</h2>
-          <p class="eyebrow">Rencana anggaran per komponen sesuai Juknis BOS</p>
+          <h2>RKAS &amp; Kode Rekening</h2>
+          <p class="eyebrow">Rencana Kegiatan dan Anggaran Sekolah — mengikuti format Kode Rekening / Program Kegiatan SNP ARKAS</p>
         </div>
 
         <div class="panel form-panel">
+          <p class="hint">Isi <strong>Kode Rekening</strong> dan <strong>Program Kegiatan SNP</strong> sesuai kertas kerja ARKAS sekolah Anda (kode berbeda tiap jenjang/tahun, mohon disesuaikan sendiri agar akurat). Jumlah anggaran dihitung otomatis dari Volume × Harga Satuan.</p>
           <div class="form-grid">
-            <label class="span2">Nama Komponen<input type="text" id="rNama" placeholder="Cth: Pengembangan Perpustakaan"></label>
-            <label>Anggaran (Rp)<input type="number" id="rAnggaran" placeholder="0"></label>
+            <label>Kode Rekening<input type="text" id="rKode" placeholder="Cth: 02.02.01"></label>
+            <label class="span2">Program Kegiatan SNP<input type="text" id="rProgram" placeholder="Cth: Pengembangan Perpustakaan"></label>
+            <label class="span3">Nama Referensi / Uraian<input type="text" id="rUraian" placeholder="Cth: Belanja buku bacaan untuk perpustakaan"></label>
+            <label>Volume<input type="number" id="rVol" placeholder="0" step="any"></label>
+            <label>Satuan<input type="text" id="rSatuan" placeholder="Cth: paket, org, bulan"></label>
+            <label>Harga Satuan (Rp)<input type="number" id="rHarga" placeholder="0"></label>
           </div>
-          <div class="form-actions"><button class="btn btn-primary" id="btnTambahKomponen">Tambah Komponen</button></div>
+          <div class="form-actions"><button class="btn btn-primary" id="btnTambahKomponen">Tambah Baris RKAS</button></div>
         </div>
 
-        <div class="panel">
+        <div class="panel table-wrap">
           <table class="table" id="tableRkas">
-            <thead><tr><th>Komponen</th><th class="num">Anggaran RKAS</th><th class="num">Realisasi</th><th class="num">Sisa</th><th></th></tr></thead>
+            <thead><tr>
+              <th>Kode Rek.</th><th>Program Kegiatan SNP</th><th>Uraian</th>
+              <th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th>
+              <th class="num">Jumlah Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th><th></th>
+            </tr></thead>
             <tbody></tbody>
-            <tfoot><tr><td>Total</td><td class="num" id="totalAnggaran">Rp 0</td><td class="num" id="totalRealisasiRkas">Rp 0</td><td class="num" id="totalSisaRkas">Rp 0</td><td></td></tr></tfoot>
+            <tfoot><tr><td colspan="6">Total</td><td class="num" id="totalAnggaran">Rp 0</td><td class="num" id="totalRealisasiRkas">Rp 0</td><td class="num" id="totalSisaRkas">Rp 0</td><td></td></tr></tfoot>
           </table>
+        </div>
+      </section>
+
+      <!-- NOTA PESANAN -->
+      <section class="page" id="page-nota">
+        <div class="page-head no-print">
+          <h2>Nota Pesanan Barang/Jasa</h2>
+          <p class="eyebrow">Dibuat berdasarkan baris RKAS &amp; Kode Rekening yang dipilih</p>
+        </div>
+
+        <div class="panel form-panel no-print">
+          <div class="form-grid">
+            <label class="span3">Referensi RKAS (Kode Rekening)<select id="nRkasRef"></select></label>
+            <label>No. Nota<input type="text" id="nNoNota" placeholder="001/BOS/2026"></label>
+            <label>Tanggal<input type="date" id="nTanggal"></label>
+            <label>Nama Penyedia / Toko<input type="text" id="nPenyedia" placeholder="Toko Sumber Ilmu"></label>
+            <label class="span3">Alamat Penyedia<input type="text" id="nAlamat" placeholder="Opsional"></label>
+          </div>
+
+          <div class="form-grid" style="margin-top:14px;border-top:1px dashed var(--paper-line);padding-top:14px;">
+            <label class="span2">Nama Barang / Jasa<input type="text" id="niNama" placeholder="Cth: Buku cerita anak"></label>
+            <label>Volume<input type="number" id="niVol" placeholder="0" step="any"></label>
+            <label>Satuan<input type="text" id="niSatuan" placeholder="eks / unit / paket"></label>
+            <label>Harga Satuan (Rp)<input type="number" id="niHarga" placeholder="0"></label>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-secondary" id="btnTambahItemNota">+ Tambah Item ke Daftar</button>
+          </div>
+
+          <table class="table" id="tableNotaDraft" style="margin-top:12px;">
+            <thead><tr><th>Nama Barang/Jasa</th><th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th></th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td colspan="4">Total Nota</td><td class="num" id="totalNotaDraft">Rp 0</td><td></td></tr></tfoot>
+          </table>
+
+          <div class="form-actions"><button class="btn btn-primary" id="btnSimpanNota">Simpan Nota Pesanan</button></div>
+        </div>
+
+        <div class="panel no-print">
+          <div class="panel-head"><h3>Daftar Nota Pesanan Tersimpan</h3></div>
+          <table class="table" id="tableNotaList">
+            <thead><tr><th>No. Nota</th><th>Tanggal</th><th>Penyedia</th><th>Kode Rek. Referensi</th><th class="num">Total</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="form-actions no-print"><button class="btn btn-secondary" id="btnCetakNota">Cetak Nota Terpilih</button></div>
+
+        <div class="report" id="notaDoc">
+          <div class="report-head">
+            <h2>NOTA PESANAN BARANG / JASA</h2>
+            <p id="notaSchoolLine">Nama Sekolah — NPSN —</p>
+          </div>
+          <div class="report-summary" style="grid-template-columns:repeat(2,1fr);">
+            <div><span>No. Nota</span><strong id="notaNoView">—</strong></div>
+            <div><span>Tanggal</span><strong id="notaTglView">—</strong></div>
+          </div>
+          <div class="report-summary" style="grid-template-columns:repeat(2,1fr);margin-top:0;">
+            <div><span>Penyedia / Toko</span><strong id="notaPenyediaView">—</strong></div>
+            <div><span>Referensi Kode Rekening</span><strong id="notaKodeView">—</strong></div>
+          </div>
+
+          <h3>Rincian Pesanan</h3>
+          <table class="table" id="notaItemsView">
+            <thead><tr><th>No</th><th>Nama Barang/Jasa</th><th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td colspan="5">Total Pesanan</td><td class="num" id="notaTotalView">Rp 0</td></tr></tfoot>
+          </table>
+
+          <div class="report-sign">
+            <div>
+              <p>Penyedia Barang/Jasa</p>
+              <div class="sign-space"></div>
+              <strong id="notaSignPenyedia">(______________________)</strong>
+            </div>
+            <div>
+              <p>Mengetahui,<br>Bendahara BOS</p>
+              <div class="sign-space"></div>
+              <strong id="notaSignBendahara">(______________________)</strong>
+              <span id="notaSignBendaharaNip"></span>
+            </div>
+          </div>
         </div>
       </section>
 
