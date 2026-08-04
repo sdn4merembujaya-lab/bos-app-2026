@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aplikasi Pertanggungjawaban BOS 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">BOS</div>
+      <div class="brand-text">
+        <strong>Pertanggungjawaban</strong>
+        <span>Dana BOS &middot; TA 2026</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-page="dashboard"><span class="nav-num">01</span>Dasbor</button>
+      <button class="nav-item" data-page="profil"><span class="nav-num">02</span>Profil Sekolah</button>
+      <button class="nav-item" data-page="penerimaan"><span class="nav-num">03</span>Penerimaan Dana</button>
+      <button class="nav-item" data-page="bku"><span class="nav-num">04</span>Buku Kas Umum</button>
+      <button class="nav-item" data-page="rkas"><span class="nav-num">05</span>RKAS &amp; Komponen</button>
+      <button class="nav-item" data-page="laporan"><span class="nav-num">06</span>Laporan &amp; Cetak</button>
+      <button class="nav-item" data-page="backup"><span class="nav-num">07</span>Cadangkan Data</button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="stamp" title="Status data tersimpan lokal">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><path id="stampCirclePath" d="M 50,50 m -34,0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none"/><text><textPath href="#stampCirclePath" startOffset="2%">TERSIMPAN &middot; PERANGKAT LOKAL &middot;</textPath></text><text x="50" y="55" text-anchor="middle" class="stamp-year">2026</text></svg>
+      </div>
+      <p>Data disimpan di penyimpanan lokal peramban (localStorage). Gunakan menu <em>Cadangkan Data</em> untuk mengekspor/mengimpor JSON.</p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <header class="topbar">
+      <div>
+        <h1 id="topbarSchool">Nama Sekolah Belum Diisi</h1>
+        <p id="topbarSub">NPSN — &middot; Tahun Anggaran 2026</p>
+      </div>
+      <div class="topbar-balance">
+        <span>Sisa Saldo Kas</span>
+        <strong id="topbarSaldo">Rp 0</strong>
+      </div>
+    </header>
+
+    <div class="pages">
+
+      <!-- DASHBOARD -->
+      <section class="page active" id="page-dashboard">
+        <div class="page-head">
+          <h2>Dasbor Ringkasan</h2>
+          <p class="eyebrow">Ikhtisar realisasi dana BOS tahun anggaran 2026</p>
+        </div>
+
+        <div class="cards">
+          <div class="card">
+            <span class="card-label">Total Diterima</span>
+            <strong id="cardTerima">Rp 0</strong>
+          </div>
+          <div class="card">
+            <span class="card-label">Total Direalisasikan</span>
+            <strong id="cardRealisasi">Rp 0</strong>
+          </div>
+          <div class="card">
+            <span class="card-label">Sisa Saldo</span>
+            <strong id="cardSaldo">Rp 0</strong>
+          </div>
+          <div class="card">
+            <span class="card-label">Persentase Serapan</span>
+            <strong id="cardPersen">0%</strong>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Realisasi per Komponen Kegiatan</h3>
+            <span class="eyebrow">Anggaran RKAS vs. realisasi BKU</span>
+          </div>
+          <div id="chartKomponen" class="chart-komponen"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Transaksi Terbaru</h3>
+            <span class="eyebrow">5 catatan terakhir pada Buku Kas Umum</span>
+          </div>
+          <table class="table" id="tableRecent">
+            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- PROFIL -->
+      <section class="page" id="page-profil">
+        <div class="page-head">
+          <h2>Profil Sekolah</h2>
+          <p class="eyebrow">Identitas satuan pendidikan penerima BOS</p>
+        </div>
+        <div class="panel form-panel">
+          <div class="form-grid">
+            <label>Nama Sekolah<input type="text" id="fNamaSekolah" placeholder="SD Negeri 1 Contoh"></label>
+            <label>NPSN<input type="text" id="fNpsn" placeholder="12345678"></label>
+            <label>Alamat<input type="text" id="fAlamat" placeholder="Jl. Pendidikan No. 1"></label>
+            <label>Kecamatan / Kabupaten<input type="text" id="fWilayah" placeholder="Kec. — / Kab. —"></label>
+            <label>Kepala Sekolah<input type="text" id="fKepsek" placeholder="Nama Kepala Sekolah"></label>
+            <label>NIP Kepala Sekolah<input type="text" id="fKepsekNip" placeholder="—"></label>
+            <label>Bendahara BOS<input type="text" id="fBendahara" placeholder="Nama Bendahara"></label>
+            <label>NIP Bendahara<input type="text" id="fBendaharaNip" placeholder="—"></label>
+            <label>Tahun Anggaran<input type="number" id="fTahun" value="2026"></label>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" id="btnSimpanProfil">Simpan Profil</button></div>
+        </div>
+      </section>
+
+      <!-- PENERIMAAN -->
+      <section class="page" id="page-penerimaan">
+        <div class="page-head">
+          <h2>Penerimaan Dana BOS</h2>
+          <p class="eyebrow">Catatan penyaluran dana per tahap</p>
+        </div>
+
+        <div class="panel form-panel">
+          <div class="form-grid">
+            <label>Tanggal<input type="date" id="pTanggal"></label>
+            <label>Tahap Penyaluran
+              <select id="pTahap">
+                <option>Tahap 1</option><option>Tahap 2</option><option>Tahap 3</option><option>Lainnya</option>
+              </select>
+            </label>
+            <label>Nomor SP2D / Referensi<input type="text" id="pRef" placeholder="—"></label>
+            <label>Jumlah (Rp)<input type="number" id="pJumlah" placeholder="0"></label>
+            <label class="span2">Keterangan<input type="text" id="pKet" placeholder="Opsional"></label>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" id="btnTambahPenerimaan">Tambah Penerimaan</button></div>
+        </div>
+
+        <div class="panel">
+          <table class="table" id="tablePenerimaan">
+            <thead><tr><th>Tanggal</th><th>Tahap</th><th>No. Referensi</th><th>Keterangan</th><th class="num">Jumlah</th><th></th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td colspan="4">Total Penerimaan</td><td class="num" id="totalPenerimaan">Rp 0</td><td></td></tr></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- BKU -->
+      <section class="page" id="page-bku">
+        <div class="page-head">
+          <h2>Buku Kas Umum (BKU)</h2>
+          <p class="eyebrow">Seluruh transaksi penerimaan dan pengeluaran kas</p>
+        </div>
+
+        <div class="panel form-panel">
+          <div class="form-grid">
+            <label>Tanggal<input type="date" id="bTanggal"></label>
+            <label>No. Bukti<input type="text" id="bNoBukti" placeholder="001/BOS/2026"></label>
+            <label class="span2">Uraian<input type="text" id="bUraian" placeholder="Uraian transaksi"></label>
+            <label>Jenis
+              <select id="bJenis"><option value="pengeluaran">Pengeluaran</option><option value="penerimaan">Penerimaan Lain</option></select>
+            </label>
+            <label>Komponen Kegiatan<select id="bKomponen"></select></label>
+            <label>Jumlah (Rp)<input type="number" id="bJumlah" placeholder="0"></label>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" id="btnTambahBku">Tambah ke BKU</button></div>
+        </div>
+
+        <div class="panel">
+          <table class="table" id="tableBku">
+            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- RKAS -->
+      <section class="page" id="page-rkas">
+        <div class="page-head">
+          <h2>RKAS &amp; Komponen Kegiatan</h2>
+          <p class="eyebrow">Rencana anggaran per komponen sesuai Juknis BOS</p>
+        </div>
+
+        <div class="panel form-panel">
+          <div class="form-grid">
+            <label class="span2">Nama Komponen<input type="text" id="rNama" placeholder="Cth: Pengembangan Perpustakaan"></label>
+            <label>Anggaran (Rp)<input type="number" id="rAnggaran" placeholder="0"></label>
+          </div>
+          <div class="form-actions"><button class="btn btn-primary" id="btnTambahKomponen">Tambah Komponen</button></div>
+        </div>
+
+        <div class="panel">
+          <table class="table" id="tableRkas">
+            <thead><tr><th>Komponen</th><th class="num">Anggaran RKAS</th><th class="num">Realisasi</th><th class="num">Sisa</th><th></th></tr></thead>
+            <tbody></tbody>
+            <tfoot><tr><td>Total</td><td class="num" id="totalAnggaran">Rp 0</td><td class="num" id="totalRealisasiRkas">Rp 0</td><td class="num" id="totalSisaRkas">Rp 0</td><td></td></tr></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- LAPORAN -->
+      <section class="page" id="page-laporan">
+        <div class="page-head no-print">
+          <h2>Laporan &amp; Cetak</h2>
+          <p class="eyebrow">Rekapitulasi per triwulan untuk dicetak / diarsipkan</p>
+        </div>
+
+        <div class="panel no-print">
+          <div class="form-grid" style="grid-template-columns: repeat(2,1fr);">
+            <label>Pilih Triwulan
+              <select id="lwTriwulan">
+                <option value="1">Triwulan I (Jan–Mar)</option>
+                <option value="2">Triwulan II (Apr–Jun)</option>
+                <option value="3">Triwulan III (Jul–Sep)</option>
+                <option value="4">Triwulan IV (Okt–Des)</option>
+                <option value="all">Seluruh Tahun</option>
+              </select>
+            </label>
+            <div class="form-actions" style="align-self:end;">
+              <button class="btn btn-secondary" id="btnCsv">Unduh CSV</button>
+              <button class="btn btn-primary" id="btnCetak">Cetak Laporan</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="report" id="reportArea">
+          <div class="report-head">
+            <div class="stamp stamp-report">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><path id="stampCirclePath2" d="M 50,50 m -34,0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none"/><text><textPath href="#stampCirclePath2" startOffset="2%">LAPORAN PERTANGGUNGJAWABAN &middot;</textPath></text><text x="50" y="55" text-anchor="middle" class="stamp-year">BOS</text></svg>
+            </div>
+            <h2>LAPORAN PERTANGGUNGJAWABAN DANA BOS</h2>
+            <p id="reportSchoolLine">Nama Sekolah — NPSN —</p>
+            <p id="reportPeriodLine">Periode: Tahun Anggaran 2026</p>
+          </div>
+
+          <div class="report-summary">
+            <div><span>Total Penerimaan</span><strong id="repTerima">Rp 0</strong></div>
+            <div><span>Total Pengeluaran</span><strong id="repKeluar">Rp 0</strong></div>
+            <div><span>Sisa Saldo Akhir</span><strong id="repSaldo">Rp 0</strong></div>
+          </div>
+
+          <h3>Rekap Realisasi per Komponen</h3>
+          <table class="table" id="reportRkasTable">
+            <thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <h3>Rincian Buku Kas Umum</h3>
+          <table class="table" id="reportBkuTable">
+            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <div class="report-sign">
+            <div>
+              <p>Mengetahui,<br>Kepala Sekolah</p>
+              <div class="sign-space"></div>
+              <strong id="signKepsek">(______________________)</strong>
+              <span id="signKepsekNip"></span>
+            </div>
+            <div>
+              <p>Dibuat oleh,<br>Bendahara BOS</p>
+              <div class="sign-space"></div>
+              <strong id="signBendahara">(______________________)</strong>
+              <span id="signBendaharaNip"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BACKUP -->
+      <section class="page" id="page-backup">
+        <div class="page-head">
+          <h2>Cadangkan &amp; Pulihkan Data</h2>
+          <p class="eyebrow">Ekspor seluruh data ke berkas JSON, atau pulihkan dari cadangan</p>
+        </div>
+        <div class="panel form-panel">
+          <p class="hint">Karena data hanya tersimpan di peramban perangkat ini, unduh cadangan secara berkala — terutama sebelum mengganti perangkat atau membersihkan data peramban.</p>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnExportJson">Unduh Cadangan (.json)</button>
+            <label class="btn btn-secondary file-btn">Pulihkan dari Berkas
+              <input type="file" id="fileImportJson" accept="application/json" hidden>
+            </label>
+            <button class="btn btn-danger" id="btnResetData">Hapus Semua Data</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
