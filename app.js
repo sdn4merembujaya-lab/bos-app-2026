@@ -1,202 +1,652 @@
-:root{
-  --navy: #16324F;
-  --navy-deep: #0D2136;
-  --gold: #C99A2E;
-  --gold-soft: #E9D9AE;
-  --paper: #F6F3EC;
-  --paper-line: #DED5C2;
-  --ink: #232B33;
-  --ink-soft: #5C6773;
-  --green: #2F6F4E;
-  --red: #A0392C;
-  --white: #FFFFFF;
-  --radius: 3px;
-  --serif: "Newsreader", Georgia, serif;
-  --sans: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+/* ===================================================================
+   Aplikasi Pertanggungjawaban Laporan BOS 2026
+   Data disimpan di localStorage milik peramban perangkat ini.
+=================================================================== */
+
+const STORAGE_KEY = "bos2026_data_v2";
+const OLD_STORAGE_KEY = "bos2026_data_v1";
+
+const DEFAULT_KOMPONEN = [
+  "Pengembangan Perpustakaan",
+  "Kegiatan Penerimaan Peserta Didik Baru",
+  "Kegiatan Pembelajaran dan Ekstrakurikuler",
+  "Kegiatan Asesmen/Evaluasi Pembelajaran",
+  "Administrasi Kegiatan Sekolah",
+  "Pengembangan Profesi Guru & Tenaga Kependidikan",
+  "Langganan Daya dan Jasa",
+  "Pemeliharaan Sarana dan Prasarana Sekolah",
+  "Penyediaan Alat Multi Media Pembelajaran",
+  "Pembayaran Honor",
+];
+
+function defaultState() {
+  return {
+    profil: {
+      nama: "", npsn: "", alamat: "", wilayah: "",
+      kepsek: "", kepsekNip: "", bendahara: "", bendaharaNip: "",
+      tahun: 2026
+    },
+    penerimaan: [],
+    bku: [],
+    rkas: DEFAULT_KOMPONEN.map(program => ({
+      id: uid(), kode: "", namaReferensi: "", program, uraian: "", vol: 0, satuan: "", harga: 0,
+      tw1: 0, tw2: 0, tw3: 0, tw4: 0
+    })),
+    nota: [],
+    kwitansi: [],
+  };
 }
 
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{
-  font-family:var(--sans);
-  color:var(--ink);
-  background:var(--paper);
-  -webkit-font-smoothing:antialiased;
-}
-button, input, select{font-family:inherit;}
-
-/* ---------- LAYOUT ---------- */
-.app{
-  display:grid;
-  grid-template-columns: 260px 1fr;
-  min-height:100vh;
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
 }
 
-.sidebar{
-  background:var(--navy-deep);
-  color:#EDE7D8;
-  padding:28px 22px;
-  display:flex;
-  flex-direction:column;
-  position:sticky;
-  top:0;
-  height:100vh;
-}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:36px;}
-.brand-mark{
-  width:44px;height:44px;border-radius:50%;
-  border:1.5px solid var(--gold);
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:.03em;
-  color:var(--gold);
-  flex-shrink:0;
-}
-.brand-text{display:flex;flex-direction:column;line-height:1.3;}
-.brand-text strong{font-family:var(--serif);font-size:17px;font-weight:600;color:#fff;}
-.brand-text span{font-size:11.5px;color:#9FAEBC;letter-spacing:.02em;}
-
-.nav{display:flex;flex-direction:column;gap:2px;flex:1;}
-.nav-item{
-  display:flex;align-items:center;gap:12px;
-  background:none;border:none;text-align:left;
-  color:#C7CFD8;font-size:14px;font-weight:500;
-  padding:11px 12px;border-radius:var(--radius);cursor:pointer;
-  transition:background .15s ease, color .15s ease;
-}
-.nav-num{font-family:var(--mono);font-size:11px;color:#6E7F91;width:20px;}
-.nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
-.nav-item.active{background:var(--gold);color:var(--navy-deep);font-weight:700;}
-.nav-item.active .nav-num{color:var(--navy-deep);opacity:.6;}
-
-.sidebar-foot{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1);}
-.sidebar-foot p{font-size:11.5px;color:#8794A3;line-height:1.5;margin:12px 0 0;}
-
-.stamp{width:88px;height:88px;margin:0 auto;opacity:.85;}
-.stamp svg{width:100%;height:100%;}
-.stamp circle{fill:none;stroke:var(--gold);stroke-width:1.4;}
-.stamp path{stroke:none;}
-.stamp text{fill:var(--gold);font-family:var(--mono);font-size:6.3px;letter-spacing:1px;}
-.stamp .stamp-year{font-family:var(--serif);font-size:13px;fill:var(--gold);font-weight:600;}
-
-.main{padding:34px 44px 60px;max-width:1180px;}
-
-.topbar{
-  display:flex;justify-content:space-between;align-items:flex-end;
-  padding-bottom:22px;margin-bottom:28px;border-bottom:2px solid var(--navy);
-}
-.topbar h1{font-family:var(--serif);font-size:26px;margin:0;font-weight:600;color:var(--navy-deep);}
-.topbar p{margin:4px 0 0;color:var(--ink-soft);font-size:13px;}
-.topbar-balance{text-align:right;}
-.topbar-balance span{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
-.topbar-balance strong{font-family:var(--mono);font-size:22px;color:var(--green);}
-
-.page{display:none;}
-.page.active{display:block;}
-
-.page-head{margin-bottom:22px;}
-.page-head h2{font-family:var(--serif);font-size:22px;margin:0 0 4px;color:var(--navy-deep);}
-.eyebrow{font-size:12.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:0;}
-
-/* ---------- CARDS ---------- */
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
-.card{
-  background:var(--white);border:1px solid var(--paper-line);border-radius:var(--radius);
-  padding:18px 18px 16px;border-top:3px solid var(--gold);
-}
-.card-label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;}
-.card strong{font-family:var(--mono);font-size:20px;color:var(--navy-deep);display:block;}
-
-/* ---------- PANEL / TABLE ---------- */
-.panel{background:var(--white);border:1px solid var(--paper-line);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px;}
-.panel-head{margin-bottom:14px;}
-.panel-head h3{font-family:var(--serif);font-size:17px;margin:0 0 2px;color:var(--navy-deep);}
-
-.table{width:100%;border-collapse:collapse;font-size:13.5px;}
-.table thead th{
-  text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;
-  color:var(--ink-soft);border-bottom:1.5px solid var(--navy);padding:8px 10px;font-weight:600;
-}
-.table td{padding:9px 10px;border-bottom:1px solid var(--paper-line);vertical-align:top;}
-.table td.num, .table th.num{text-align:right;font-family:var(--mono);}
-.table tfoot td{font-weight:700;border-top:1.5px solid var(--navy);border-bottom:none;color:var(--navy-deep);}
-.table tbody tr:hover{background:#FBF9F4;}
-.row-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;font-weight:600;}
-.row-del:hover{text-decoration:underline;}
-.empty-row td{text-align:center;color:var(--ink-soft);font-style:italic;padding:20px;}
-
-/* ---------- FORMS ---------- */
-.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 16px;}
-.form-grid label{display:flex;flex-direction:column;font-size:12.5px;color:var(--ink-soft);gap:6px;font-weight:600;}
-.form-grid .span2{grid-column:span 2;}
-.form-grid .span3{grid-column:span 3;}
-.table-wrap{overflow-x:auto;}
-.form-grid input, .form-grid select{
-  font-size:14px;padding:9px 10px;border:1px solid #CBD3DA;border-radius:var(--radius);
-  color:var(--ink);background:#FBFBF9;
-}
-.form-grid input:focus, .form-grid select:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold);}
-.form-actions{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;}
-.hint{font-size:13px;color:var(--ink-soft);margin:0 0 14px;line-height:1.5;}
-
-.btn{
-  border:none;border-radius:var(--radius);padding:10px 18px;font-size:13.5px;font-weight:700;
-  cursor:pointer;letter-spacing:.01em;transition:filter .15s ease;
-}
-.btn:hover{filter:brightness(0.94);}
-.btn-primary{background:var(--navy);color:#fff;}
-.btn-secondary{background:var(--paper);color:var(--navy-deep);border:1px solid var(--paper-line);}
-.btn-danger{background:#fff;color:var(--red);border:1px solid var(--red);}
-.file-btn{display:inline-flex;align-items:center;cursor:pointer;}
-
-/* ---------- CHART ---------- */
-.chart-komponen{display:flex;flex-direction:column;gap:10px;}
-.chart-row{display:grid;grid-template-columns:180px 1fr 90px;align-items:center;gap:12px;font-size:12.5px;}
-.chart-track{background:#EFEAE0;border-radius:2px;height:10px;overflow:hidden;position:relative;}
-.chart-fill{height:100%;background:var(--gold);}
-.chart-fill.over{background:var(--red);}
-.chart-val{font-family:var(--mono);text-align:right;color:var(--ink-soft);}
-
-/* ---------- REPORT / PRINT ---------- */
-.report{background:var(--white);border:1px solid var(--paper-line);padding:36px 40px;position:relative;}
-.report-head{text-align:center;margin-bottom:24px;border-bottom:2px solid var(--navy);padding-bottom:18px;position:relative;}
-.report-head h2{font-family:var(--serif);font-size:20px;margin:6px 0 4px;letter-spacing:.02em;color:var(--navy-deep);}
-.report-head p{margin:2px 0;font-size:13px;color:var(--ink-soft);}
-.stamp-report{position:absolute;right:0;top:-6px;width:76px;height:76px;}
-.report h3{font-family:var(--serif);font-size:15px;color:var(--navy-deep);margin:26px 0 10px;}
-.report-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px;}
-.report-summary div{border:1px solid var(--paper-line);padding:12px 14px;border-radius:var(--radius);}
-.report-summary span{display:block;font-size:11px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;}
-.report-summary strong{font-family:var(--mono);font-size:17px;color:var(--navy-deep);}
-
-.report-sign{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:46px;text-align:center;font-size:13px;}
-.report-sign p{margin:0;color:var(--ink-soft);}
-.sign-space{height:64px;}
-.report-sign strong{display:block;font-size:13.5px;}
-.report-sign span{display:block;font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
-
-.toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
-  background:var(--navy-deep);color:#fff;padding:11px 20px;border-radius:var(--radius);
-  font-size:13px;opacity:0;pointer-events:none;transition:all .25s ease;border-left:3px solid var(--gold);
-}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-@media (max-width: 980px){
-  .app{grid-template-columns:1fr;}
-  .sidebar{position:relative;height:auto;}
-  .main{padding:24px 18px 50px;}
-  .cards{grid-template-columns:repeat(2,1fr);}
-  .form-grid{grid-template-columns:repeat(2,1fr);}
+function loadState() {
+  try {
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // coba migrasi dari versi data lama (format RKAS sebelumnya)
+      const old = localStorage.getItem(OLD_STORAGE_KEY);
+      if (old) {
+        const oldParsed = JSON.parse(old);
+        const migrated = defaultState();
+        migrated.profil = Object.assign(migrated.profil, oldParsed.profil || {});
+        migrated.penerimaan = oldParsed.penerimaan || [];
+        migrated.rkas = (oldParsed.rkas || []).map(k => ({
+          id: k.id || uid(), kode: "", program: k.nama || "", uraian: "",
+          vol: k.anggaran ? 1 : 0, satuan: "paket", harga: k.anggaran || 0
+        }));
+        const rkasByName = {};
+        migrated.rkas.forEach(k => rkasByName[k.program] = k.id);
+        migrated.bku = (oldParsed.bku || []).map(r => ({
+          ...r, komponenId: rkasByName[r.komponen] || ""
+        }));
+        migrated.nota = [];
+        return migrated;
+      }
+      return defaultState();
+    }
+    const parsed = JSON.parse(raw);
+    const merged = defaultState();
+    return Object.assign(merged, parsed, {
+      profil: Object.assign(merged.profil, parsed.profil || {})
+    });
+  } catch (e) {
+    console.error("Gagal memuat data, memakai data kosong.", e);
+    return defaultState();
+  }
 }
 
-@media print{
-  .no-print, .sidebar{display:none !important;}
-  .app{display:block;}
-  .main{padding:0;max-width:none;}
-  .page{display:none !important;}
-  .page.active{display:block !important;}
-  .topbar{display:none;}
-  body{background:#fff;}
-  .report{border:none;padding:0;}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
+
+let state = loadState();
+let notaDraftItems = [];
+let selectedNotaId = null;
+
+/* ---------------- FORMATTERS ---------------- */
+function rupiah(n) {
+  n = Number(n) || 0;
+  return "Rp " + n.toLocaleString("id-ID", { maximumFractionDigits: 0 });
+}
+function tglIndo(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+}
+function quarterOf(iso) {
+  if (!iso) return null;
+  const m = new Date(iso + "T00:00:00").getMonth();
+  return Math.floor(m / 3) + 1;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function val(id) { return document.getElementById(id).value.trim(); }
+
+/* ---------------- TERBILANG (angka ke kata, Bahasa Indonesia) ---------------- */
+function terbilang(n) {
+  n = Math.floor(Math.abs(Number(n) || 0));
+  const satuan = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
+  function words(num) {
+    if (num < 12) return satuan[num];
+    if (num < 20) return words(num - 10) + " belas";
+    if (num < 100) return words(Math.floor(num / 10)) + " puluh" + (num % 10 ? " " + words(num % 10) : "");
+    if (num < 200) return "seratus" + (num % 100 ? " " + words(num % 100) : "");
+    if (num < 1000) return words(Math.floor(num / 100)) + " ratus" + (num % 100 ? " " + words(num % 100) : "");
+    if (num < 2000) return "seribu" + (num % 1000 ? " " + words(num % 1000) : "");
+    if (num < 1000000) return words(Math.floor(num / 1000)) + " ribu" + (num % 1000 ? " " + words(num % 1000) : "");
+    if (num < 1000000000) return words(Math.floor(num / 1000000)) + " juta" + (num % 1000000 ? " " + words(num % 1000000) : "");
+    if (num < 1000000000000) return words(Math.floor(num / 1000000000)) + " miliar" + (num % 1000000000 ? " " + words(num % 1000000000) : "");
+    return words(Math.floor(num / 1000000000000)) + " triliun" + (num % 1000000000000 ? " " + words(num % 1000000000000) : "");
+  }
+  if (n === 0) return "nol";
+  const s = words(n).trim().replace(/\s+/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function terbilangRupiah(n) {
+  return terbilang(n) + " rupiah";
+}
+
+/* ---------------- AUTO NOMOR DOKUMEN ---------------- */
+function nextDocNumber(existingList, numberField) {
+  let max = 0;
+  existingList.forEach(item => {
+    const m = String(item[numberField] || "").match(/^(\d+)/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return String(max + 1).padStart(3, "0") + "/BOS/" + (state.profil.tahun || 2026);
+}
+
+/* ---------------- TOAST ---------------- */
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+}
+
+/* ---------------- NAVIGATION ---------------- */
+function switchPage(pageId) {
+  document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const btn = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+  if (btn) btn.classList.add("active");
+  const page = document.getElementById("page-" + pageId);
+  if (page) page.classList.add("active");
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+document.getElementById("nav").addEventListener("click", (e) => {
+  const btn = e.target.closest(".nav-item");
+  if (!btn) return;
+  switchPage(btn.dataset.page);
+});
+
+/* ---------------- RKAS HELPERS ---------------- */
+function rkasAnggaran(k) {
+  return (Number(k.vol) || 0) * (Number(k.harga) || 0);
+}
+function rkasLabel(k) {
+  const kode = k.kode ? k.kode + " — " : "";
+  return kode + (k.program || "(tanpa nama program)");
+}
+function rkasById(id) {
+  return state.rkas.find(k => k.id === id);
+}
+
+/* ---------------- BKU RUNNING BALANCE ---------------- */
+function bkuSorted() {
+  return [...state.bku].sort((a, b) => (a.tanggal || "").localeCompare(b.tanggal || "") || (a._seq || 0) - (b._seq || 0));
+}
+function bkuWithSaldo() {
+  let saldo = 0;
+  return bkuSorted().map(row => {
+    saldo += (row.jenis === "penerimaan" ? row.jumlah : -row.jumlah);
+    const rk = rkasById(row.komponenId);
+    return { ...row, saldo, komponenLabel: rk ? rkasLabel(rk) : (row.komponen || "—") };
+  });
+}
+function totalPenerimaanDana() {
+  return state.penerimaan.reduce((s, r) => s + Number(r.jumlah || 0), 0);
+}
+function totalPenerimaanLain() {
+  return state.bku.filter(r => r.jenis === "penerimaan").reduce((s, r) => s + Number(r.jumlah || 0), 0);
+}
+function totalPengeluaran() {
+  return state.bku.filter(r => r.jenis === "pengeluaran").reduce((s, r) => s + Number(r.jumlah || 0), 0);
+}
+function saldoAkhir() {
+  return totalPenerimaanDana() + totalPenerimaanLain() - totalPengeluaran();
+}
+function realisasiPerKomponen(id) {
+  return state.bku
+    .filter(r => r.jenis === "pengeluaran" && r.komponenId === id)
+    .reduce((s, r) => s + Number(r.jumlah || 0), 0);
+}
+
+/* ---------------- RENDER: TOPBAR ---------------- */
+function renderTopbar() {
+  document.getElementById("topbarSchool").textContent = state.profil.nama || "Nama Sekolah Belum Diisi";
+  document.getElementById("topbarSub").textContent =
+    `NPSN ${state.profil.npsn || "—"} · Tahun Anggaran ${state.profil.tahun || 2026}`;
+  document.getElementById("topbarSaldo").textContent = rupiah(saldoAkhir());
+}
+
+/* ---------------- RENDER: DASHBOARD ---------------- */
+function renderDashboard() {
+  const terima = totalPenerimaanDana() + totalPenerimaanLain();
+  const keluar = totalPengeluaran();
+  document.getElementById("cardTerima").textContent = rupiah(terima);
+  document.getElementById("cardRealisasi").textContent = rupiah(keluar);
+  document.getElementById("cardSaldo").textContent = rupiah(terima - keluar);
+  document.getElementById("cardPersen").textContent = terima > 0 ? Math.round((keluar / terima) * 100) + "%" : "0%";
+
+  const chart = document.getElementById("chartKomponen");
+  chart.innerHTML = "";
+  state.rkas.forEach(k => {
+    const anggaran = rkasAnggaran(k);
+    const real = realisasiPerKomponen(k.id);
+    const pct = anggaran > 0 ? Math.min(100, (real / anggaran) * 100) : (real > 0 ? 100 : 0);
+    const over = anggaran > 0 && real > anggaran;
+    const row = document.createElement("div");
+    row.className = "chart-row";
+    row.innerHTML = `
+      <span title="${escapeHtml(rkasLabel(k))}">${escapeHtml(rkasLabel(k))}</span>
+      <span class="chart-track"><span class="chart-fill ${over ? "over" : ""}" style="width:${pct}%"></span></span>
+      <span class="chart-val">${rupiah(real)}</span>`;
+    chart.appendChild(row);
+  });
+  if (state.rkas.length === 0) {
+    chart.innerHTML = `<p class="hint">Belum ada baris RKAS. Tambahkan pada menu RKAS &amp; Kode Rekening.</p>`;
+  }
+
+  const tbody = document.querySelector("#tableRecent tbody");
+  tbody.innerHTML = "";
+  const recent = bkuWithSaldo().slice(-5).reverse();
+  if (recent.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Belum ada transaksi.</td></tr>`;
+  } else {
+    recent.forEach(r => {
+      tbody.innerHTML += `<tr>
+        <td>${tglIndo(r.tanggal)}</td><td>${r.noBukti || "—"}</td><td>${r.uraian}</td><td>${escapeHtml(r.komponenLabel)}</td>
+        <td class="num">${r.jenis === "penerimaan" ? rupiah(r.jumlah) : "—"}</td>
+        <td class="num">${r.jenis === "pengeluaran" ? rupiah(r.jumlah) : "—"}</td>
+      </tr>`;
+    });
+  }
+}
+
+/* ---------------- RENDER: PROFIL ---------------- */
+function renderProfil() {
+  const p = state.profil;
+  document.getElementById("fNamaSekolah").value = p.nama;
+  document.getElementById("fNpsn").value = p.npsn;
+  document.getElementById("fAlamat").value = p.alamat;
+  document.getElementById("fWilayah").value = p.wilayah;
+  document.getElementById("fKepsek").value = p.kepsek;
+  document.getElementById("fKepsekNip").value = p.kepsekNip;
+  document.getElementById("fBendahara").value = p.bendahara;
+  document.getElementById("fBendaharaNip").value = p.bendaharaNip;
+  document.getElementById("fTahun").value = p.tahun;
+}
+document.getElementById("btnSimpanProfil").addEventListener("click", () => {
+  state.profil = {
+    nama: val("fNamaSekolah"), npsn: val("fNpsn"), alamat: val("fAlamat"), wilayah: val("fWilayah"),
+    kepsek: val("fKepsek"), kepsekNip: val("fKepsekNip"),
+    bendahara: val("fBendahara"), bendaharaNip: val("fBendaharaNip"),
+    tahun: Number(val("fTahun")) || 2026
+  };
+  saveState();
+  renderTopbar();
+  toast("Profil sekolah disimpan.");
+});
+
+/* ---------------- RENDER: PENERIMAAN ---------------- */
+function renderPenerimaan() {
+  const tbody = document.querySelector("#tablePenerimaan tbody");
+  tbody.innerHTML = "";
+  if (state.penerimaan.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Belum ada data penerimaan.</td></tr>`;
+  } else {
+    [...state.penerimaan].sort((a, b) => (a.tanggal || "").localeCompare(b.tanggal || "")).forEach(r => {
+      tbody.innerHTML += `<tr>
+        <td>${tglIndo(r.tanggal)}</td><td>${r.tahap}</td><td>${r.ref || "—"}</td><td>${r.ket || "—"}</td>
+        <td class="num">${rupiah(r.jumlah)}</td>
+        <td><button class="row-del" data-id="${r.id}">Hapus</button></td>
+      </tr>`;
+    });
+  }
+  document.getElementById("totalPenerimaan").textContent = rupiah(totalPenerimaanDana());
+}
+document.getElementById("btnTambahPenerimaan").addEventListener("click", () => {
+  const tanggal = val("pTanggal"), jumlah = Number(val("pJumlah"));
+  if (!tanggal || !jumlah) { toast("Isi tanggal dan jumlah terlebih dahulu."); return; }
+  state.penerimaan.push({ id: uid(), tanggal, tahap: document.getElementById("pTahap").value, ref: val("pRef"), jumlah, ket: val("pKet") });
+  ["pTanggal","pRef","pJumlah","pKet"].forEach(id => document.getElementById(id).value = "");
+  saveState(); renderAll();
+  toast("Penerimaan dana ditambahkan.");
+});
+document.querySelector("#tablePenerimaan tbody").addEventListener("click", (e) => {
+  if (!e.target.matches(".row-del")) return;
+  state.penerimaan = state.penerimaan.filter(r => r.id !== e.target.dataset.id);
+  saveState(); renderAll();
+});
+
+/* ---------------- KOMPONEN <select> OPTIONS (dipakai BKU & Nota) ---------------- */
+function refreshKomponenSelects() {
+  const opts = state.rkas.map(k => `<option value="${k.id}">${escapeHtml(rkasLabel(k))}</option>`).join("");
+  const bSel = document.getElementById("bKomponen");
+  const nSel = document.getElementById("nRkasRef");
+  const kSel = document.getElementById("kRkasRef");
+  const empty = `<option value="">(belum ada baris RKAS)</option>`;
+  if (bSel) bSel.innerHTML = opts || empty;
+  if (nSel) nSel.innerHTML = opts || empty;
+  if (kSel) {
+    const prev = kSel.value;
+    kSel.innerHTML = `<option value="">— Tidak ada —</option>` + opts;
+    if (prev) kSel.value = prev;
+  }
+}
+
+/* ---------------- RENDER: BKU ---------------- */
+function renderBku() {
+  const tbody = document.querySelector("#tableBku tbody");
+  tbody.innerHTML = "";
+  const rows = bkuWithSaldo();
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">Belum ada transaksi pada Buku Kas Umum.</td></tr>`;
+  } else {
+    rows.forEach(r => {
+      tbody.innerHTML += `<tr>
+        <td>${tglIndo(r.tanggal)}</td><td>${r.noBukti || "—"}</td><td>${r.uraian}</td><td>${escapeHtml(r.penerima || "—")}</td><td>${escapeHtml(r.komponenLabel)}</td>
+        <td class="num">${r.jenis === "penerimaan" ? rupiah(r.jumlah) : "—"}</td>
+        <td class="num">${r.jenis === "pengeluaran" ? rupiah(r.jumlah) : "—"}</td>
+        <td class="num">${rupiah(r.saldo)}</td>
+        <td><button class="row-del" data-id="${r.id}">Hapus</button></td>
+      </tr>`;
+    });
+  }
+}
+document.getElementById("btnTambahBku").addEventListener("click", () => {
+  const tanggal = val("bTanggal"), uraian = val("bUraian"), jumlah = Number(val("bJumlah"));
+  if (!tanggal || !uraian || !jumlah) { toast("Lengkapi tanggal, uraian, dan jumlah."); return; }
+  state.bku.push({
+    id: uid(), _seq: state.bku.length,
+    tanggal, noBukti: val("bNoBukti"), uraian,
+    jenis: document.getElementById("bJenis").value,
+    komponenId: document.getElementById("bKomponen").value || "",
+    jumlah,
+    penerima: val("bPenerima")
+  });
+  ["bTanggal","bNoBukti","bUraian","bJumlah","bPenerima"].forEach(id => document.getElementById(id).value = "");
+  saveState(); renderAll();
+  toast("Transaksi ditambahkan ke BKU.");
+});
+document.querySelector("#tableBku tbody").addEventListener("click", (e) => {
+  if (!e.target.matches(".row-del")) return;
+  state.bku = state.bku.filter(r => r.id !== e.target.dataset.id);
+  saveState(); renderAll();
+});
+
+/* ---------------- RENDER: RKAS ---------------- */
+function renderRkas() {
+  const tbody = document.querySelector("#tableRkas tbody");
+  tbody.innerHTML = "";
+  if (state.rkas.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">Belum ada baris RKAS.</td></tr>`;
+  } else {
+    state.rkas.forEach(k => {
+      const anggaran = rkasAnggaran(k);
+      const real = realisasiPerKomponen(k.id);
+      const sisa = anggaran - real;
+      tbody.innerHTML += `<tr>
+        <td>${escapeHtml(k.kode || "—")}</td>
+        <td>${escapeHtml(k.program || "—")}</td>
+        <td>${escapeHtml(k.uraian || "—")}</td>
+        <td class="num">${k.vol || 0}</td>
+        <td>${escapeHtml(k.satuan || "—")}</td>
+        <td class="num">${rupiah(k.harga)}</td>
+        <td class="num">${rupiah(anggaran)}</td>
+        <td class="num">${rupiah(real)}</td>
+        <td class="num" style="${sisa < 0 ? "color:#A0392C" : ""}">${rupiah(sisa)}</td>
+        <td><button class="row-del" data-id="${k.id}">Hapus</button></td>
+      </tr>`;
+    });
+  }
+  const totalA = state.rkas.reduce((s, r) => s + rkasAnggaran(r), 0);
+  const totalR = state.rkas.reduce((s, r) => s + realisasiPerKomponen(r.id), 0);
+  document.getElementById("totalAnggaran").textContent = rupiah(totalA);
+  document.getElementById("totalRealisasiRkas").textContent = rupiah(totalR);
+  document.getElementById("totalSisaRkas").textContent = rupiah(totalA - totalR);
+  refreshKomponenSelects();
+}
+document.getElementById("btnTambahKomponen").addEventListener("click", () => {
+  const program = val("rProgram");
+  if (!program) { toast("Isi Program Kegiatan SNP terlebih dahulu."); return; }
+  state.rkas.push({
+    id: uid(),
+    kode: val("rKode"),
+    program,
+    uraian: val("rUraian"),
+    vol: Number(val("rVol")) || 0,
+    satuan: val("rSatuan"),
+    harga: Number(val("rHarga")) || 0
+  });
+  ["rKode","rProgram","rUraian","rVol","rSatuan","rHarga"].forEach(id => document.getElementById(id).value = "");
+  saveState(); renderAll();
+  toast("Baris RKAS ditambahkan.");
+});
+document.querySelector("#tableRkas tbody").addEventListener("click", (e) => {
+  if (!e.target.matches(".row-del")) return;
+  state.rkas = state.rkas.filter(r => r.id !== e.target.dataset.id);
+  saveState(); renderAll();
+});
+
+/* ---------------- RENDER: NOTA PESANAN ---------------- */
+function renderNotaDraftTable() {
+  const tbody = document.querySelector("#tableNotaDraft tbody");
+  tbody.innerHTML = notaDraftItems.map((it, idx) => `<tr>
+      <td>${escapeHtml(it.nama)}</td><td class="num">${it.vol}</td><td>${escapeHtml(it.satuan)}</td>
+      <td class="num">${rupiah(it.harga)}</td><td class="num">${rupiah(it.vol * it.harga)}</td>
+      <td><button class="row-del" data-idx="${idx}">Hapus</button></td>
+    </tr>`).join("") || `<tr class="empty-row"><td colspan="6">Belum ada item ditambahkan.</td></tr>`;
+  const total = notaDraftItems.reduce((s, it) => s + it.vol * it.harga, 0);
+  document.getElementById("totalNotaDraft").textContent = rupiah(total);
+}
+document.getElementById("btnTambahItemNota").addEventListener("click", () => {
+  const nama = val("niNama"), vol = Number(val("niVol")), harga = Number(val("niHarga"));
+  if (!nama || !vol || !harga) { toast("Lengkapi nama barang, volume, dan harga satuan."); return; }
+  notaDraftItems.push({ nama, vol, satuan: val("niSatuan") || "-", harga });
+  ["niNama","niVol","niSatuan","niHarga"].forEach(id => document.getElementById(id).value = "");
+  renderNotaDraftTable();
+});
+document.querySelector("#tableNotaDraft tbody").addEventListener("click", (e) => {
+  if (!e.target.matches(".row-del")) return;
+  notaDraftItems.splice(Number(e.target.dataset.idx), 1);
+  renderNotaDraftTable();
+});
+document.getElementById("btnSimpanNota").addEventListener("click", () => {
+  const rkasRefId = document.getElementById("nRkasRef").value;
+  const noNota = val("nNoNota"), tanggal = val("nTanggal"), penyedia = val("nPenyedia");
+  if (!rkasRefId) { toast("Pilih referensi RKAS / Kode Rekening terlebih dahulu."); return; }
+  if (!noNota || !tanggal || !penyedia) { toast("Lengkapi no. nota, tanggal, dan nama penyedia."); return; }
+  if (notaDraftItems.length === 0) { toast("Tambahkan minimal 1 item barang/jasa."); return; }
+  const nota = {
+    id: uid(), noNota, tanggal, penyedia, alamat: val("nAlamat"),
+    rkasRefId, items: notaDraftItems
+  };
+  state.nota.push(nota);
+  notaDraftItems = [];
+  ["nNoNota","nTanggal","nPenyedia","nAlamat"].forEach(id => document.getElementById(id).value = "");
+  renderNotaDraftTable();
+  saveState();
+  selectedNotaId = nota.id;
+  renderNotaPage();
+  toast("Nota pesanan disimpan.");
+});
+
+function renderNotaList() {
+  const tbody = document.querySelector("#tableNotaList tbody");
+  if (state.nota.length === 0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Belum ada nota pesanan tersimpan.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = [...state.nota].sort((a, b) => (b.tanggal || "").localeCompare(a.tanggal || "")).map(n => {
+    const rk = rkasById(n.rkasRefId);
+    const total = n.items.reduce((s, it) => s + it.vol * it.harga, 0);
+    return `<tr>
+      <td>${escapeHtml(n.noNota)}</td><td>${tglIndo(n.tanggal)}</td><td>${escapeHtml(n.penyedia)}</td>
+      <td>${rk ? escapeHtml(rkasLabel(rk)) : "(baris RKAS dihapus)"}</td>
+      <td class="num">${rupiah(total)}</td>
+      <td>
+        <button class="row-del" data-view="${n.id}" style="color:var(--navy);">Lihat</button>
+        &middot; <button class="row-del" data-del="${n.id}">Hapus</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+document.querySelector("#tableNotaList tbody").addEventListener("click", (e) => {
+  if (e.target.dataset.view) {
+    selectedNotaId = e.target.dataset.view;
+    renderNotaDoc();
+    document.getElementById("notaDoc").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  if (e.target.dataset.del) {
+    state.nota = state.nota.filter(n => n.id !== e.target.dataset.del);
+    if (selectedNotaId === e.target.dataset.del) selectedNotaId = null;
+    saveState(); renderNotaPage();
+  }
+});
+function renderNotaDoc() {
+  const nota = state.nota.find(n => n.id === selectedNotaId) || state.nota[state.nota.length - 1];
+  document.getElementById("notaSchoolLine").textContent =
+    `${state.profil.nama || "Nama Sekolah"} — NPSN ${state.profil.npsn || "—"}`;
+  if (!nota) {
+    document.getElementById("notaNoView").textContent = "—";
+    document.getElementById("notaTglView").textContent = "—";
+    document.getElementById("notaPenyediaView").textContent = "—";
+    document.getElementById("notaKodeView").textContent = "—";
+    document.querySelector("#notaItemsView tbody").innerHTML = `<tr class="empty-row"><td colspan="6">Belum ada nota dipilih. Simpan atau pilih "Lihat" pada daftar di atas.</td></tr>`;
+    document.getElementById("notaTotalView").textContent = "Rp 0";
+    document.getElementById("notaSignPenyedia").textContent = "(______________________)";
+    document.getElementById("notaSignBendahara").textContent = "(______________________)";
+    document.getElementById("notaSignBendaharaNip").textContent = "";
+    return;
+  }
+  const rk = rkasById(nota.rkasRefId);
+  document.getElementById("notaNoView").textContent = nota.noNota;
+  document.getElementById("notaTglView").textContent = tglIndo(nota.tanggal);
+  document.getElementById("notaPenyediaView").textContent = nota.penyedia + (nota.alamat ? " — " + nota.alamat : "");
+  document.getElementById("notaKodeView").textContent = rk ? rkasLabel(rk) : "(baris RKAS dihapus)";
+  const total = nota.items.reduce((s, it) => s + it.vol * it.harga, 0);
+  document.querySelector("#notaItemsView tbody").innerHTML = nota.items.map((it, i) => `<tr>
+      <td>${i + 1}</td><td>${escapeHtml(it.nama)}</td><td class="num">${it.vol}</td><td>${escapeHtml(it.satuan)}</td>
+      <td class="num">${rupiah(it.harga)}</td><td class="num">${rupiah(it.vol * it.harga)}</td>
+    </tr>`).join("");
+  document.getElementById("notaTotalView").textContent = rupiah(total);
+  document.getElementById("notaSignPenyedia").textContent = `(${nota.penyedia})`;
+  document.getElementById("notaSignBendahara").textContent = `(${state.profil.bendahara || "______________________"})`;
+  document.getElementById("notaSignBendaharaNip").textContent = state.profil.bendaharaNip ? `NIP. ${state.profil.bendaharaNip}` : "";
+}
+document.getElementById("btnCetakNota").addEventListener("click", () => {
+  if (!selectedNotaId && state.nota.length === 0) { toast("Belum ada nota pesanan untuk dicetak."); return; }
+  window.print();
+});
+function renderNotaPage() {
+  renderNotaList();
+  renderNotaDoc();
+}
+
+/* ---------------- RENDER: LAPORAN ---------------- */
+function filteredBkuByPeriod() {
+  const val = document.getElementById("lwTriwulan").value;
+  const rows = bkuWithSaldo();
+  if (val === "all") return rows;
+  return rows.filter(r => quarterOf(r.tanggal) === Number(val));
+}
+function renderLaporan() {
+  const rows = filteredBkuByPeriod();
+  const terima = rows.filter(r => r.jenis === "penerimaan").reduce((s, r) => s + Number(r.jumlah || 0), 0) + totalPenerimaanDana();
+  const keluar = rows.filter(r => r.jenis === "pengeluaran").reduce((s, r) => s + Number(r.jumlah || 0), 0);
+
+  document.getElementById("reportSchoolLine").textContent =
+    `${state.profil.nama || "Nama Sekolah"} — NPSN ${state.profil.npsn || "—"} — ${state.profil.wilayah || "—"}`;
+  const twLabel = { "1": "Triwulan I (Jan–Mar)", "2": "Triwulan II (Apr–Jun)", "3": "Triwulan III (Jul–Sep)", "4": "Triwulan IV (Okt–Des)", "all": "Seluruh Tahun" }[document.getElementById("lwTriwulan").value];
+  document.getElementById("reportPeriodLine").textContent = `Periode: ${twLabel} — Tahun Anggaran ${state.profil.tahun || 2026}`;
+
+  document.getElementById("repTerima").textContent = rupiah(terima);
+  document.getElementById("repKeluar").textContent = rupiah(keluar);
+  document.getElementById("repSaldo").textContent = rupiah(saldoAkhir());
+
+  const rkasBody = document.querySelector("#reportRkasTable tbody");
+  rkasBody.innerHTML = state.rkas.map(k => {
+    const anggaran = rkasAnggaran(k);
+    const real = realisasiPerKomponen(k.id);
+    return `<tr><td>${escapeHtml(rkasLabel(k))}</td><td class="num">${rupiah(anggaran)}</td><td class="num">${rupiah(real)}</td><td class="num">${rupiah(anggaran - real)}</td></tr>`;
+  }).join("") || `<tr class="empty-row"><td colspan="4">Belum ada data.</td></tr>`;
+
+  const bkuBody = document.querySelector("#reportBkuTable tbody");
+  bkuBody.innerHTML = rows.map(r => `<tr>
+      <td>${tglIndo(r.tanggal)}</td><td>${r.noBukti || "—"}</td><td>${r.uraian}</td><td>${escapeHtml(r.komponenLabel)}</td>
+      <td class="num">${r.jenis === "penerimaan" ? rupiah(r.jumlah) : "—"}</td>
+      <td class="num">${r.jenis === "pengeluaran" ? rupiah(r.jumlah) : "—"}</td>
+      <td class="num">${rupiah(r.saldo)}</td>
+    </tr>`).join("") || `<tr class="empty-row"><td colspan="7">Tidak ada transaksi pada periode ini.</td></tr>`;
+
+  document.getElementById("signKepsek").textContent = `(${state.profil.kepsek || "______________________"})`;
+  document.getElementById("signKepsekNip").textContent = state.profil.kepsekNip ? `NIP. ${state.profil.kepsekNip}` : "";
+  document.getElementById("signBendahara").textContent = `(${state.profil.bendahara || "______________________"})`;
+  document.getElementById("signBendaharaNip").textContent = state.profil.bendaharaNip ? `NIP. ${state.profil.bendaharaNip}` : "";
+}
+document.getElementById("lwTriwulan").addEventListener("change", renderLaporan);
+document.getElementById("btnCetak").addEventListener("click", () => window.print());
+document.getElementById("btnCsv").addEventListener("click", () => {
+  const rows = filteredBkuByPeriod();
+  let csv = "Tanggal,No Bukti,Uraian,Komponen,Penerimaan,Pengeluaran,Saldo\n";
+  rows.forEach(r => {
+    csv += [tglIndo(r.tanggal), r.noBukti || "", `"${(r.uraian||"").replace(/"/g,'""')}"`, `"${(r.komponenLabel||"").replace(/"/g,'""')}"`,
+      r.jenis === "penerimaan" ? r.jumlah : "", r.jenis === "pengeluaran" ? r.jumlah : "", r.saldo].join(",") + "\n";
+  });
+  downloadFile(`BKU_BOS_${state.profil.tahun || 2026}.csv`, csv, "text/csv");
+  toast("CSV diunduh.");
+});
+
+/* ---------------- BACKUP / RESTORE ---------------- */
+document.getElementById("btnExportJson").addEventListener("click", () => {
+  downloadFile(`cadangan_bos_${state.profil.tahun || 2026}.json`, JSON.stringify(state, null, 2), "application/json");
+  toast("Cadangan data diunduh.");
+});
+document.getElementById("fileImportJson").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      state = Object.assign(defaultState(), parsed);
+      saveState(); renderAll();
+      toast("Data berhasil dipulihkan.");
+    } catch (err) {
+      toast("Berkas tidak valid.");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+document.getElementById("btnResetData").addEventListener("click", () => {
+  if (!confirm("Yakin ingin menghapus seluruh data pada aplikasi ini? Tindakan ini tidak dapat dibatalkan.")) return;
+  state = defaultState();
+  saveState(); renderAll();
+  toast("Seluruh data telah dihapus.");
+});
+
+function downloadFile(name, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------- RENDER ALL ---------------- */
+function renderAll() {
+  renderTopbar();
+  renderRkas();
+  renderDashboard();
+  renderProfil();
+  renderPenerimaan();
+  renderBku();
+  renderNotaPage();
+  renderLaporan();
+}
+
+// set default tanggal ke hari ini pada form-form
+(function setDefaultDates() {
+  const today = new Date().toISOString().slice(0, 10);
+  ["pTanggal", "bTanggal", "nTanggal"].forEach(id => { document.getElementById(id).value = today; });
+})();
+
+renderAll();
