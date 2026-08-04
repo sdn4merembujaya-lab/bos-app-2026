@@ -7,6 +7,28 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* ==== Tambahan untuk fitur Checklist SPJ Otomatis (digabung ke RKAS) ==== */
+  .status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:.72rem;font-weight:700;white-space:nowrap;}
+  .status-belum{background:#fef3e0;color:#b45309;}
+  .status-lengkap{background:#eafbef;color:#16a34a;}
+  .status-kosong{background:#f1f3f2;color:#8a9994;}
+  select.jenis-select-inline{width:100%;min-width:170px;padding:5px 6px;font-size:.78rem;border:1px solid var(--paper-line,#d7e6e2);border-radius:6px;font-family:inherit;}
+  .btn-ghost{background:#fff;color:#0f766e;border:1px solid var(--paper-line,#d7e6e2);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;}
+  .btn-ghost:hover{background:#e6f5f3;}
+  .btn-sm{padding:4px 9px;font-size:.72rem;}
+  .import-box{margin-top:14px;padding-top:14px;border-top:1px dashed var(--paper-line,#d7e6e2);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .import-box .hint{margin:0;max-width:520px;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(20,30,28,.45);display:none;align-items:center;justify-content:center;z-index:999;padding:20px;}
+  .modal-box{background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:82vh;overflow:auto;padding:22px 24px;box-shadow:0 20px 60px -20px rgba(0,0,0,.35);}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .modal-head h3{margin:0;font-size:1.05rem;}
+  .modal-close{background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:#8a9994;}
+  .spj-checklist{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .spj-checklist li{display:flex;align-items:flex-start;gap:9px;font-size:.88rem;padding:8px 10px;border-radius:8px;background:#f6faf9;}
+  .spj-checklist li.done label{text-decoration:line-through;color:#8a9994;}
+  .spj-checklist input[type=checkbox]{margin-top:2px;width:15px;height:15px;flex-shrink:0;}
+</style>
 </head>
 <body>
 
@@ -204,6 +226,7 @@
             <label>Volume<input type="number" id="rVol" placeholder="0" step="any"></label>
             <label>Satuan<input type="text" id="rSatuan" placeholder="Cth: paket, org, bulan"></label>
             <label>Harga Satuan (Rp)<input type="number" id="rHarga" placeholder="0"></label>
+            <label class="span3">Jenis Kegiatan (untuk Checklist SPJ)<select id="rJenis"></select></label>
           </div>
           <div class="form-grid" style="margin-top:14px;border-top:1px dashed var(--paper-line);padding-top:14px;">
             <label>Tahap I &middot; Triwulan 1 (%)<input type="number" id="rTw1" placeholder="0" step="any"></label>
@@ -212,6 +235,11 @@
             <label>Tahap II &middot; Triwulan 4 (%)<input type="number" id="rTw4" placeholder="0" step="any"></label>
           </div>
           <div class="form-actions"><button class="btn btn-primary" id="btnTambahKomponen">Tambah Baris RKAS</button></div>
+
+          <div class="import-box">
+            <p class="hint">Sudah pernah mengisi RKAS di prototipe <em>Checklist SPJ Otomatis</em>? Impor sekali ke sini supaya tidak perlu mengetik ulang.</p>
+            <button class="btn btn-secondary" id="btnImportChecklistSpj">Impor dari Checklist SPJ (sekali jalan)</button>
+          </div>
         </div>
 
         <div class="panel table-wrap">
@@ -229,6 +257,8 @@
                 <th colspan="2">Tahap II</th>
                 <th rowspan="2" class="num">Realisasi</th>
                 <th rowspan="2" class="num">Sisa</th>
+                <th rowspan="2">Jenis Kegiatan</th>
+                <th rowspan="2">Checklist SPJ</th>
                 <th rowspan="2"></th>
               </tr>
               <tr>
@@ -244,7 +274,7 @@
               <td colspan="4"></td>
               <td class="num" id="totalRealisasiRkas">Rp 0</td>
               <td class="num" id="totalSisaRkas">Rp 0</td>
-              <td></td>
+              <td colspan="3"></td>
             </tr></tfoot>
           </table>
         </div>
@@ -492,6 +522,18 @@
 
     </div>
   </main>
+</div>
+
+<!-- MODAL CHECKLIST SPJ -->
+<div class="modal-overlay" id="spjModalOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="spjModalTitle">Checklist SPJ</h3>
+      <button class="modal-close" id="spjModalClose" type="button">&times;</button>
+    </div>
+    <p class="hint" id="spjModalSub"></p>
+    <ul class="spj-checklist" id="spjModalList"></ul>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
