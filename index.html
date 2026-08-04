@@ -29,8 +29,9 @@
       <button class="nav-item" data-page="bku"><span class="nav-num">04</span>Buku Kas Umum</button>
       <button class="nav-item" data-page="rkas"><span class="nav-num">05</span>RKAS &amp; Kode Rekening</button>
       <button class="nav-item" data-page="nota"><span class="nav-num">06</span>Nota Pesanan</button>
-      <button class="nav-item" data-page="laporan"><span class="nav-num">07</span>Laporan &amp; Cetak</button>
-      <button class="nav-item" data-page="backup"><span class="nav-num">08</span>Cadangkan Data</button>
+      <button class="nav-item" data-page="kwitansi"><span class="nav-num">07</span>Kwitansi</button>
+      <button class="nav-item" data-page="laporan"><span class="nav-num">08</span>Laporan &amp; Cetak</button>
+      <button class="nav-item" data-page="backup"><span class="nav-num">09</span>Cadangkan Data</button>
     </nav>
 
     <div class="sidebar-foot">
@@ -173,13 +174,14 @@
             </label>
             <label>Komponen Kegiatan<select id="bKomponen"></select></label>
             <label>Jumlah (Rp)<input type="number" id="bJumlah" placeholder="0"></label>
+            <label class="span2">Penerima / Dibayarkan Kepada<input type="text" id="bPenerima" placeholder="Nama toko / penyedia / penerima honor"></label>
           </div>
           <div class="form-actions"><button class="btn btn-primary" id="btnTambahBku">Tambah ke BKU</button></div>
         </div>
 
-        <div class="panel">
+        <div class="panel table-wrap">
           <table class="table" id="tableBku">
-            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th><th></th></tr></thead>
+            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Penerima</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -193,27 +195,57 @@
         </div>
 
         <div class="panel form-panel">
-          <p class="hint">Isi <strong>Kode Rekening</strong> dan <strong>Program Kegiatan SNP</strong> sesuai kertas kerja ARKAS sekolah Anda (kode berbeda tiap jenjang/tahun, mohon disesuaikan sendiri agar akurat). Jumlah anggaran dihitung otomatis dari Volume × Harga Satuan.</p>
+          <p class="hint">Isi <strong>Kode Rekening</strong> dan <strong>Program Kegiatan SNP</strong> sesuai kertas kerja ARKAS sekolah Anda (kode berbeda tiap jenjang/tahun, mohon disesuaikan sendiri agar akurat). Jumlah anggaran dihitung otomatis dari Volume × Harga Satuan. Rencana pencairan per triwulan bersifat opsional (total idealnya 100%).</p>
           <div class="form-grid">
             <label>Kode Rekening<input type="text" id="rKode" placeholder="Cth: 02.02.01"></label>
-            <label class="span2">Program Kegiatan SNP<input type="text" id="rProgram" placeholder="Cth: Pengembangan Perpustakaan"></label>
-            <label class="span3">Nama Referensi / Uraian<input type="text" id="rUraian" placeholder="Cth: Belanja buku bacaan untuk perpustakaan"></label>
+            <label class="span2">Nama Referensi<input type="text" id="rReferensi" placeholder="Cth: Belanja Buku Koleksi Perpustakaan"></label>
+            <label class="span3">Program Kegiatan SNP<input type="text" id="rProgram" placeholder="Cth: Pengembangan Perpustakaan"></label>
+            <label class="span3">Uraian<input type="text" id="rUraian" placeholder="Cth: Belanja buku bacaan untuk perpustakaan"></label>
             <label>Volume<input type="number" id="rVol" placeholder="0" step="any"></label>
             <label>Satuan<input type="text" id="rSatuan" placeholder="Cth: paket, org, bulan"></label>
             <label>Harga Satuan (Rp)<input type="number" id="rHarga" placeholder="0"></label>
+          </div>
+          <div class="form-grid" style="margin-top:14px;border-top:1px dashed var(--paper-line);padding-top:14px;">
+            <label>Tahap I &middot; Triwulan 1 (%)<input type="number" id="rTw1" placeholder="0" step="any"></label>
+            <label>Tahap I &middot; Triwulan 2 (%)<input type="number" id="rTw2" placeholder="0" step="any"></label>
+            <label>Tahap II &middot; Triwulan 3 (%)<input type="number" id="rTw3" placeholder="0" step="any"></label>
+            <label>Tahap II &middot; Triwulan 4 (%)<input type="number" id="rTw4" placeholder="0" step="any"></label>
           </div>
           <div class="form-actions"><button class="btn btn-primary" id="btnTambahKomponen">Tambah Baris RKAS</button></div>
         </div>
 
         <div class="panel table-wrap">
           <table class="table" id="tableRkas">
-            <thead><tr>
-              <th>Kode Rek.</th><th>Program Kegiatan SNP</th><th>Uraian</th>
-              <th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th>
-              <th class="num">Jumlah Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th><th></th>
-            </tr></thead>
+            <thead>
+              <tr>
+                <th rowspan="2">No.<br>Urut</th>
+                <th rowspan="2">Kode<br>Rekening</th>
+                <th rowspan="2">Nama Referensi</th>
+                <th rowspan="2">Program Kegiatan SNP</th>
+                <th rowspan="2">Uraian</th>
+                <th colspan="3">Rincian Perhitungan</th>
+                <th rowspan="2" class="num">Jumlah</th>
+                <th colspan="2">Tahap I</th>
+                <th colspan="2">Tahap II</th>
+                <th rowspan="2" class="num">Realisasi</th>
+                <th rowspan="2" class="num">Sisa</th>
+                <th rowspan="2"></th>
+              </tr>
+              <tr>
+                <th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th>
+                <th class="num">TW 1</th><th class="num">TW 2</th>
+                <th class="num">TW 3</th><th class="num">TW 4</th>
+              </tr>
+            </thead>
             <tbody></tbody>
-            <tfoot><tr><td colspan="6">Total</td><td class="num" id="totalAnggaran">Rp 0</td><td class="num" id="totalRealisasiRkas">Rp 0</td><td class="num" id="totalSisaRkas">Rp 0</td><td></td></tr></tfoot>
+            <tfoot><tr>
+              <td colspan="8">Total</td>
+              <td class="num" id="totalAnggaran">Rp 0</td>
+              <td colspan="4"></td>
+              <td class="num" id="totalRealisasiRkas">Rp 0</td>
+              <td class="num" id="totalSisaRkas">Rp 0</td>
+              <td></td>
+            </tr></tfoot>
           </table>
         </div>
       </section>
@@ -253,7 +285,7 @@
           <div class="form-actions"><button class="btn btn-primary" id="btnSimpanNota">Simpan Nota Pesanan</button></div>
         </div>
 
-        <div class="panel no-print">
+        <div class="panel no-print table-wrap">
           <div class="panel-head"><h3>Daftar Nota Pesanan Tersimpan</h3></div>
           <table class="table" id="tableNotaList">
             <thead><tr><th>No. Nota</th><th>Tanggal</th><th>Penyedia</th><th>Kode Rek. Referensi</th><th class="num">Total</th><th></th></tr></thead>
@@ -295,6 +327,76 @@
               <div class="sign-space"></div>
               <strong id="notaSignBendahara">(______________________)</strong>
               <span id="notaSignBendaharaNip"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KWITANSI -->
+      <section class="page" id="page-kwitansi">
+        <div class="page-head no-print">
+          <h2>Kwitansi Pembayaran</h2>
+          <p class="eyebrow">Bukti pembayaran kepada penyedia — dapat dibuat otomatis dari Nota Pesanan</p>
+        </div>
+
+        <div class="panel form-panel no-print">
+          <div class="form-grid">
+            <label class="span3">Isi Otomatis dari Nota Pesanan (opsional)
+              <select id="kNotaRef"><option value="">— Isi manual —</option></select>
+            </label>
+            <label>No. Kwitansi<input type="text" id="kNoKwitansi" placeholder="001/KWT/2026"></label>
+            <label>Tanggal<input type="date" id="kTanggal"></label>
+            <label>Kode Rek. Referensi<select id="kRkasRef"></select></label>
+            <label class="span3">Sudah Terima Dari<input type="text" id="kDari" placeholder="Bendahara BOS"></label>
+            <label class="span2">Yang Menerima Uang (Penyedia/Toko/Nama)<input type="text" id="kKepada" placeholder="Toko Sumber Ilmu"></label>
+            <label>Jumlah (Rp)<input type="number" id="kJumlah" placeholder="0"></label>
+            <label class="span3">Untuk Pembayaran<input type="text" id="kUntuk" placeholder="Cth: Pembelian buku bacaan perpustakaan sesuai Nota Pesanan No. 001/BOS/2026"></label>
+          </div>
+          <p class="hint" id="kTerbilangPreview" style="margin-top:10px;">Terbilang: —</p>
+          <div class="form-actions"><button class="btn btn-primary" id="btnSimpanKwitansi">Simpan Kwitansi</button></div>
+        </div>
+
+        <div class="panel no-print table-wrap">
+          <div class="panel-head"><h3>Daftar Kwitansi Tersimpan</h3></div>
+          <table class="table" id="tableKwitansiList">
+            <thead><tr><th>No. Kwitansi</th><th>Tanggal</th><th>Yang Menerima</th><th class="num">Jumlah</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="form-actions no-print"><button class="btn btn-secondary" id="btnCetakKwitansi">Cetak Kwitansi Terpilih</button></div>
+
+        <div class="report" id="kwitansiDoc">
+          <div class="report-head">
+            <h2>KWITANSI</h2>
+            <p id="kwitansiSchoolLine">Nama Sekolah — NPSN —</p>
+          </div>
+          <div class="report-summary" style="grid-template-columns:repeat(2,1fr);">
+            <div><span>No. Kwitansi</span><strong id="kwitansiNoView">—</strong></div>
+            <div><span>Tanggal</span><strong id="kwitansiTglView">—</strong></div>
+          </div>
+
+          <table class="table kwitansi-field-table">
+            <tbody>
+              <tr><td class="kf-label">Sudah terima dari</td><td class="kf-sep">:</td><td id="kwitansiDariView">—</td></tr>
+              <tr><td class="kf-label">Banyaknya uang</td><td class="kf-sep">:</td><td id="kwitansiJumlahView">Rp 0</td></tr>
+              <tr><td class="kf-label">Terbilang</td><td class="kf-sep">:</td><td id="kwitansiTerbilangView" style="font-style:italic;">— rupiah</td></tr>
+              <tr><td class="kf-label">Untuk pembayaran</td><td class="kf-sep">:</td><td id="kwitansiUntukView">—</td></tr>
+              <tr><td class="kf-label">Kode rekening</td><td class="kf-sep">:</td><td id="kwitansiKodeView">—</td></tr>
+            </tbody>
+          </table>
+
+          <div class="report-sign">
+            <div>
+              <p>Yang Menerima,</p>
+              <div class="sign-space"></div>
+              <strong id="kwitansiSignKepada">(______________________)</strong>
+            </div>
+            <div>
+              <p>Lunas Dibayar,<br>Bendahara BOS</p>
+              <div class="sign-space"></div>
+              <strong id="kwitansiSignBendahara">(______________________)</strong>
+              <span id="kwitansiSignBendaharaNip"></span>
             </div>
           </div>
         </div>
