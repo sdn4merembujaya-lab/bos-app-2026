@@ -133,7 +133,7 @@
       <div class="sub">Pertanggungjawaban Dana BOS</div>
     </div>
     <nav id="navlist"></nav>
-    <div class="foot" id="sidebarFoot">Data tersimpan lokal di perangkat ini.<br>v2.0 · terinspirasi SmartSPJ</div>
+    <div class="foot" id="sidebarFoot">Data tersimpan lokal di perangkat ini.<br>v2.1 · format ARKAS (RKAS/RPD/BKU)</div>
   </aside>
   <main id="main"></main>
 </div>
@@ -146,7 +146,7 @@ const defaultDB = {
   profil:{ namaSekolah:'SD NEGERI 4 MEREMBU', npsn:'', alamat:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
   penerimaan: [],
   rkas: [],
-  transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto}
+  transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,namaRekening,programKegiatanSNP,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto,penerima}
   kwitansi: [],
   notaPesanan: [],
   sppd: [],
@@ -192,6 +192,12 @@ const PAJAK_PRESET = {
   'Perjalanan Dinas':          {jenis:'Tidak dipungut', persen:0},
   'Lainnya (manual)':          {jenis:'Manual', persen:0}
 };
+
+/* 8 Standar Nasional Pendidikan yang dipakai ARKAS sebagai "Program Kegiatan SNP" */
+const STANDAR_SNP = [
+  'Standar Kompetensi Lulusan','Standar Isi','Standar Proses','Standar Penilaian Pendidikan',
+  'Standar Tenaga Kependidikan','Standar Sarana dan Prasarana','Standar Pengelolaan','Standar Pembiayaan','Lainnya'
+];
 
 /* ============ NAV ============ */
 const NAV = [
@@ -297,6 +303,34 @@ function head(eyebrow,title,desc){
   return `<div class="pagehead"><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>`;
 }
 
+/* ============ HELPERS: RKAS <-> BKU realisasi ============ */
+function rkasByKodeMap(){
+  const map = {};
+  DB.rkas.forEach(r=>{ if(r.kode) map[r.kode] = r; });
+  return map;
+}
+function realisasiForKode(kode){
+  if(!kode) return 0;
+  return DB.transaksi.filter(t=>t.tipe==='keluar' && t.kodeRekening===kode).reduce((s,t)=>s+Number(t.jumlahBruto||0),0);
+}
+function twAmt(r, n){ return Math.round(Number(r.jumlah||0) * Number(r['tw'+n+'Pct']||0) / 100); }
+function computeRealisasiPerKomponen(){
+  const map = {};
+  DB.rkas.forEach(r=>{
+    const k = r.programKegiatanSNP || 'Lainnya';
+    if(!map[k]) map[k] = {komponen:k, anggaran:0, realisasi:0};
+    map[k].anggaran += Number(r.jumlah||0);
+  });
+  const byKode = rkasByKodeMap();
+  DB.transaksi.filter(t=>t.tipe==='keluar').forEach(t=>{
+    const item = t.kodeRekening ? byKode[t.kodeRekening] : null;
+    const k = item ? (item.programKegiatanSNP||'Lainnya') : (t.programKegiatanSNP || 'Belum Terklasifikasi');
+    if(!map[k]) map[k] = {komponen:k, anggaran:0, realisasi:0};
+    map[k].realisasi += Number(t.jumlahBruto||0);
+  });
+  return Object.values(map).map(x=>({...x, sisa:x.anggaran-x.realisasi}));
+}
+
 /* ============ DASBOR ============ */
 function pageDasbor(){
   const totalPenerimaan = DB.penerimaan.reduce((s,p)=>s+Number(p.jumlah||0),0);
@@ -308,12 +342,13 @@ function pageDasbor(){
   const totalRKAS = DB.rkas.reduce((s,r)=>s+Number(r.jumlah||0),0);
 
   const recent = [...DB.transaksi].sort((a,b)=> new Date(b.tanggal)-new Date(a.tanggal)).slice(0,6);
+  const komponen = computeRealisasiPerKomponen().sort((a,b)=>b.anggaran-a.anggaran);
 
   return `
   ${head('SDN 4 Merembujaya','Dasbor','Ringkasan keuangan dana BOS tahun anggaran '+ (DB.profil.tahunAnggaran||'-'))}
   <div class="grid grid-4">
     <div class="stat pos"><div class="lbl">Total Penerimaan Dana</div><div class="val">${fmtRp(totalPenerimaan)}</div></div>
-    <div class="stat"><div class="lbl">Total Belanja RKAS</div><div class="val">${fmtRp(totalRKAS)}</div></div>
+    <div class="stat"><div class="lbl">Total Anggaran RKAS</div><div class="val">${fmtRp(totalRKAS)}</div></div>
     <div class="stat neg"><div class="lbl">Total Pengeluaran BKU</div><div class="val">${fmtRp(totalKeluar)}</div></div>
     <div class="stat"><div class="lbl">Pajak Terpotong</div><div class="val">${fmtRp(totalPajak)}</div></div>
   </div>
@@ -322,8 +357,14 @@ function pageDasbor(){
     <div class="stat"><div class="lbl">Saldo Kas Bank</div><div class="val">${fmtRp(saldoBank)}</div></div>
   </div>
   <div class="card" style="margin-top:18px;">
+    <h2>Realisasi per Komponen Kegiatan (Program SNP)</h2>
+    ${komponen.length===0?'<div class="empty">Belum ada data RKAS/BKU untuk dibandingkan.</div>':`
+    <table><thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
+    <tbody>${komponen.map(k=>`<tr><td>${k.komponen}</td><td class="num">${fmtRp(k.anggaran)}</td><td class="num">${fmtRp(k.realisasi)}</td><td class="num">${fmtRp(k.sisa)}</td></tr>`).join('')}</tbody></table>`}
+  </div>
+  <div class="card">
     <h2>Transaksi Terbaru</h2>
-    ${recent.length===0?'<div class="empty">Belum ada transaksi BKU. Mulai input di menu Buku Kas Umum.</div>':`
+    ${recent.length===0?'<div class="empty">Belum ada transaksi BKU. Mulai input di menu Buku Kas Umum, atau impor file BKU.</div>':`
     <table><thead><tr><th>Tanggal</th><th>Uraian</th><th>Jenis</th><th>Metode</th><th class="num">Netto</th></tr></thead>
     <tbody>${recent.map(t=>`<tr><td>${fmtDate(t.tanggal)}</td><td>${t.uraian}</td><td><span class="tag ${t.tipe==='masuk'?'masuk':'keluar'}">${t.tipe==='masuk'?'Masuk':'Keluar'}</span></td><td><span class="tag ${t.jenisPembayaran}">${t.jenisPembayaran==='tunai'?'Tunai':'Bank'}</span></td><td class="num">${fmtRp(t.jumlahNetto)}</td></tr>`).join('')}</tbody></table>`}
   </div>`;
@@ -386,41 +427,56 @@ function pagePenerimaan(){
 /* ============ RKAS ============ */
 function pageRkas(){
   const rows = DB.rkas;
+  const standarOpt = STANDAR_SNP.map(s=>`<option>${s}</option>`).join('');
+  const totalJumlah = rows.reduce((s,r)=>s+Number(r.jumlah||0),0);
+  const totalRealisasi = rows.reduce((s,r)=>s+realisasiForKode(r.kode),0);
   return `
-  ${head('Data Dasar','RKAS & Kode Rekening','Rencana Kegiatan dan Anggaran Sekolah — acuan untuk pos belanja di BKU.')}
+  ${head('Data Dasar','RKAS & Kode Rekening','Rencana Kegiatan dan Anggaran Sekolah — mengikuti format Kode Rekening / Program Kegiatan SNP ARKAS.')}
   <div class="card no-print">
-    <h2>Impor dari File RPD/RKAS Lama (Excel/CSV)</h2>
-    <p class="hint">Mendukung format dengan kolom Tahap I/II (Triwulan 1–4) maupun format ringkas tanpa tahap. Baris yang punya persentase Triwulan akan otomatis dipecah per triwulan.</p>
+    <h2>Impor dari File RKAS / RPD (Excel)</h2>
+    <p class="hint">Mendukung file resmi ARKAS dengan sheet bernama <b>RKAS</b> (rincian lengkap per Triwulan 1–4) atau <b>RPD</b> (rincian per satu Tahap). Jika file berisi beberapa sheet (seperti contoh RKAS/RPD/BKU dalam satu berkas), sheet <b>RKAS</b> diprioritaskan. Kolom yang dikenali: Kode Rekening, Nama Referensi, Program Kegiatan SNP, Uraian, Vol., Satuan, Harga Satuan, Jumlah, Triwulan 1–4. Baris kategori/subtotal (tanpa Vol./Harga Satuan) otomatis dilewati — hanya baris rincian barang/jasa yang diimpor.</p>
     <input type="file" id="fileImportRkas" accept=".xlsx,.xls,.csv">
     <br><br>
-    <button class="btn outline" id="btnImportRkas">Impor File RPD/RKAS</button>
+    <button class="btn outline" id="btnImportRkas">Impor File RKAS/RPD</button>
     <div id="importRkasStatus" class="hint"></div>
   </div>
   <div class="card">
     <h2>Tambah Rincian RKAS</h2>
     <div class="row">
-      <div class="field"><label>Kode Rekening</label><input id="r_kode" placeholder="mis. 5.1.02.01"></div>
-      <div class="field"><label>Uraian Kegiatan</label><input id="r_uraian" placeholder="mis. Pembelian ATK"></div>
+      <div class="field"><label>Kode Rekening</label><input id="r_kode" placeholder="mis. 5.1.02.01.01.0036"></div>
+      <div class="field"><label>Nama Referensi (nama rekening belanja)</label><input id="r_namaReferensi" placeholder="mis. Belanja Alat/Bahan untuk Kegiatan Kantor"></div>
+      <div class="field"><label>Program Kegiatan SNP</label><select id="r_programSNP">${standarOpt}</select></div>
+    </div>
+    <div class="field"><label>Uraian Kegiatan</label><input id="r_uraian" placeholder="mis. Pembelian ATK"></div>
+    <div class="row">
       <div class="field"><label>Sumber Dana</label>
         <select id="r_sumber"><option>BOS Reguler</option><option>BOS Kinerja</option><option>BOP Kesetaraan</option></select>
       </div>
-    </div>
-    <div class="row">
       <div class="field"><label>Volume</label><input type="number" id="r_volume" value="1"></div>
       <div class="field"><label>Satuan</label><input id="r_satuan" placeholder="paket/bulan/orang"></div>
       <div class="field"><label>Harga Satuan (Rp)</label><input type="number" id="r_harga" placeholder="0"></div>
-      <div class="field"><label>Triwulan</label>
-        <select id="r_triwulan"><option>I</option><option>II</option><option>III</option><option>IV</option></select>
-      </div>
+    </div>
+    <p class="hint">Rencana pencairan per triwulan (opsional, dalam %). Total idealnya 100%.</p>
+    <div class="row">
+      <div class="field"><label>Tahap I · Triwulan 1 (%)</label><input type="number" id="r_tw1" placeholder="0" step="0.1"></div>
+      <div class="field"><label>Tahap I · Triwulan 2 (%)</label><input type="number" id="r_tw2" placeholder="0" step="0.1"></div>
+      <div class="field"><label>Tahap II · Triwulan 3 (%)</label><input type="number" id="r_tw3" placeholder="0" step="0.1"></div>
+      <div class="field"><label>Tahap II · Triwulan 4 (%)</label><input type="number" id="r_tw4" placeholder="0" step="0.1"></div>
     </div>
     <button class="btn gold" id="btnAddRkas">Simpan RKAS</button>
   </div>
   <div class="card">
     <h2>Daftar RKAS</h2>
     ${rows.length===0?'<div class="empty">Belum ada rincian RKAS.</div>':`
-    <table><thead><tr><th>Kode</th><th>Uraian</th><th>Sumber Dana</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th>Triwulan</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td class="mono">${r.kode}</td><td>${r.uraian}</td><td>${r.sumber}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td>${r.triwulan}</td><td class="no-print"><button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`).join('')}</tbody>
-    <tfoot><tr><td colspan="6"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(rows.reduce((s,r)=>s+Number(r.jumlah||0),0))}</b></td><td colspan="2"></td></tr></tfoot></table>`}
+    <div style="overflow-x:auto;">
+    <table><thead><tr><th>Kode</th><th>Nama Referensi</th><th>Program SNP</th><th>Uraian</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th class="num">TW1</th><th class="num">TW2</th><th class="num">TW3</th><th class="num">TW4</th><th class="num">Realisasi</th><th class="num">Sisa</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(r=>{
+      const real = realisasiForKode(r.kode);
+      const sisa = Number(r.jumlah||0)-real;
+      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="num">${fmtRp(twAmt(r,1))}</td><td class="num">${fmtRp(twAmt(r,2))}</td><td class="num">${fmtRp(twAmt(r,3))}</td><td class="num">${fmtRp(twAmt(r,4))}</td><td class="num">${fmtRp(real)}</td><td class="num">${fmtRp(sisa)}</td><td class="no-print"><button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
+    }).join('')}</tbody>
+    <tfoot><tr><td colspan="7"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(totalJumlah)}</b></td><td colspan="4"></td><td class="num"><b>${fmtRp(totalRealisasi)}</b></td><td class="num"><b>${fmtRp(totalJumlah-totalRealisasi)}</b></td><td></td></tr></tfoot></table>
+    </div>`}
   </div>`;
 }
 
@@ -431,7 +487,8 @@ function pageBKU(){
   const rowsHtml = rows.map(t=>{
     saldo += (t.tipe==='masuk'? Number(t.jumlahNetto||0) : -Number(t.jumlahNetto||0));
     return `<tr>
-      <td>${fmtDate(t.tanggal)}</td><td class="mono">${t.noBukti||'-'}</td><td>${t.uraian}</td><td class="mono">${t.kodeRekening||'-'}</td>
+      <td>${fmtDate(t.tanggal)}</td><td class="mono">${t.noBukti||'-'}</td><td>${t.uraian}${t.penerima?'<div class="hint">Penerima: '+t.penerima+'</div>':''}</td>
+      <td class="mono">${t.kodeRekening||'-'}</td><td>${t.programKegiatanSNP||'-'}</td>
       <td><span class="tag ${t.jenisPembayaran}">${t.jenisPembayaran==='tunai'?'Tunai':'Bank'}</span></td>
       <td class="num">${t.tipe==='masuk'?fmtRp(t.jumlahBruto):'-'}</td>
       <td class="num">${t.tipe==='keluar'?fmtRp(t.jumlahBruto):'-'}</td>
@@ -447,8 +504,8 @@ function pageBKU(){
   return `
   ${head('Penatausahaan','Buku Kas Umum (BKU)','Semua transaksi kas masuk & keluar, pajak dihitung otomatis berdasarkan jenis kegiatan.')}
   <div class="card no-print">
-    <h2>Impor dari File BKU Lama (Excel/CSV)</h2>
-    <p class="hint">Kolom yang dikenali: Tanggal, No Bukti, Kode Rekening, Uraian, Penerimaan, Pengeluaran, Penerima. Metode (tunai/bank) ditebak dari kata di Uraian — bisa diedit lagi setelah impor.</p>
+    <h2>Impor dari File BKU (Excel)</h2>
+    <p class="hint">Mendukung file BKU resmi ARKAS/SIPLah (sheet bernama <b>BKU</b>). Kolom yang dikenali: Tanggal, No Bukti, Program Kegiatan SNP, Kode Rekening, Nama Rekening, Uraian, Penerimaan, Pengeluaran, Penerima. Baris "SALDO AWAL" otomatis dilewati. Metode (tunai/bank) ditebak dari kata di Uraian/Nama Rekening — bisa diedit lagi setelah impor.</p>
     <input type="file" id="fileImportBku" accept=".xlsx,.xls,.csv">
     <br><br>
     <button class="btn outline" id="btnImportBku">Impor File BKU</button>
@@ -478,6 +535,7 @@ function pageBKU(){
     <div class="row">
       <div class="field"><label>Jumlah Bruto (Rp)</label><input type="number" id="t_jumlah" placeholder="0"></div>
       <div class="field"><label>Persentase Pajak Manual (%)</label><input type="number" id="t_pajakManual" placeholder="isi jika pilih 'Lainnya (manual)'" step="0.1"></div>
+      <div class="field"><label>Penerima / Dibayarkan Kepada</label><input id="t_penerima" placeholder="nama toko/perorangan"></div>
     </div>
     <div class="hint" id="t_pajakPreview">Nominal pajak akan dihitung otomatis saat disimpan.</div>
     <br>
@@ -487,7 +545,7 @@ function pageBKU(){
     <h2>Rekap Buku Kas Umum</h2>
     ${rows.length===0?'<div class="empty">Belum ada transaksi.</div>':`
     <div style="overflow-x:auto;">
-    <table><thead><tr><th>Tgl</th><th>No.Bukti</th><th>Uraian</th><th>Kode Rek.</th><th>Metode</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Pajak</th><th class="num">Saldo</th><th class="no-print"></th></tr></thead>
+    <table><thead><tr><th>Tgl</th><th>No.Bukti</th><th>Uraian</th><th>Kode Rek.</th><th>Program SNP</th><th>Metode</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Pajak</th><th class="num">Saldo</th><th class="no-print"></th></tr></thead>
     <tbody>${rowsHtml}</tbody></table>
     </div>`}
   </div>`;
@@ -969,6 +1027,7 @@ function generateLaporanHtml(sumber, periode){
   const totalPajak = trans.reduce((s,t)=>s+Number(t.pajak?.nominal||0),0);
   const saldoAkhir = totalPenerimaanDana + totalMasuk - totalKeluar;
   const p = DB.profil;
+  const komponen = computeRealisasiPerKomponen().sort((a,b)=>b.anggaran-a.anggaran);
   return `
   <div class="card" id="laporanCetak">
     <div class="letterhead">
@@ -987,6 +1046,10 @@ function generateLaporanHtml(sumber, periode){
         <tr><td><b>Saldo Kas Akhir</b></td><td class="num"><b>${fmtRp(saldoAkhir)}</b></td></tr>
       </tbody>
     </table>
+    <h3 style="margin-top:22px;">Rekap Realisasi per Komponen (Program Kegiatan SNP)</h3>
+    ${komponen.length===0?'<div class="empty">Belum ada data RKAS/BKU.</div>':`
+    <table><thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
+    <tbody>${komponen.map(k=>`<tr><td>${k.komponen}</td><td class="num">${fmtRp(k.anggaran)}</td><td class="num">${fmtRp(k.realisasi)}</td><td class="num">${fmtRp(k.sisa)}</td></tr>`).join('')}</tbody></table>`}
     <div class="grid grid-2" style="margin-top:34px;">
       <div style="text-align:center;">
         <div>Bendahara BOS</div><br><br><br>
@@ -1076,7 +1139,7 @@ function attachPageEvents(){
   const btnImportRkas = document.getElementById('btnImportRkas');
   if(btnImportRkas) btnImportRkas.addEventListener('click', ()=>{
     const file = document.getElementById('fileImportRkas').files[0];
-    if(!file){ toast('Pilih file RPD/RKAS terlebih dahulu.'); return; }
+    if(!file){ toast('Pilih file RKAS/RPD terlebih dahulu.'); return; }
     importRkasFile(file);
   });
 
@@ -1088,7 +1151,12 @@ function attachPageEvents(){
     const volume = Number(document.getElementById('r_volume').value||0);
     const harga = Number(document.getElementById('r_harga').value||0);
     if(!kode || !uraian){ toast('Isi kode rekening dan uraian.'); return; }
-    DB.rkas.push({ id:uid(), kode, uraian, sumber:document.getElementById('r_sumber').value, volume, satuan:document.getElementById('r_satuan').value, harga, jumlah:volume*harga, triwulan:document.getElementById('r_triwulan').value });
+    DB.rkas.push({
+      id:uid(), kode, namaReferensi:document.getElementById('r_namaReferensi').value, programKegiatanSNP:document.getElementById('r_programSNP').value,
+      uraian, sumber:document.getElementById('r_sumber').value, volume, satuan:document.getElementById('r_satuan').value, harga, jumlah:volume*harga,
+      tw1Pct:Number(document.getElementById('r_tw1').value||0), tw2Pct:Number(document.getElementById('r_tw2').value||0),
+      tw3Pct:Number(document.getElementById('r_tw3').value||0), tw4Pct:Number(document.getElementById('r_tw4').value||0)
+    });
     saveDB(); toast('Rincian RKAS ditambahkan.'); render();
   });
   document.querySelectorAll('[data-del-rkas]').forEach(b=>b.addEventListener('click',()=>{
@@ -1128,6 +1196,7 @@ function attachPageEvents(){
     const tipe = document.getElementById('t_tipe').value;
     const metode = document.getElementById('t_metode').value;
     const kodeRekening = document.getElementById('t_kode').value;
+    const rkasItem = kodeRekening ? DB.rkas.find(r=>r.kode===kodeRekening) : null;
     const jenisKegiatan = document.getElementById('t_jenisKegiatan').value;
     const preset = PAJAK_PRESET[jenisKegiatan];
     let persen = preset.persen;
@@ -1140,9 +1209,10 @@ function attachPageEvents(){
     const netto = tipe==='keluar' ? bruto - nominalPajak : bruto;
     DB.transaksi.push({
       id:uid(), tanggal, noBukti:document.getElementById('t_bukti').value, uraian, kodeRekening,
+      namaRekening: rkasItem? rkasItem.namaReferensi : '', programKegiatanSNP: rkasItem? rkasItem.programKegiatanSNP : '',
       jenisPembayaran:metode, tipe, jumlahBruto:bruto,
       pajak: nominalPajak>0 ? {jenis:jenisPajak, persen, nominal:nominalPajak} : {jenis:jenisPajak, persen:0, nominal:0},
-      jumlahNetto: netto
+      jumlahNetto: netto, penerima:document.getElementById('t_penerima').value
     });
     saveDB(); toast('Transaksi BKU disimpan.'); render();
   });
@@ -1261,9 +1331,9 @@ function attachPageEvents(){
   });
   const btnExportCsv = document.getElementById('btnExportCsv');
   if(btnExportCsv) btnExportCsv.addEventListener('click', ()=>{
-    let csv = 'Tanggal,No Bukti,Uraian,Kode Rekening,Metode,Tipe,Bruto,Jenis Pajak,Nominal Pajak,Netto\n';
+    let csv = 'Tanggal,No Bukti,Uraian,Kode Rekening,Program Kegiatan SNP,Metode,Tipe,Bruto,Jenis Pajak,Nominal Pajak,Netto,Penerima\n';
     DB.transaksi.forEach(t=>{
-      csv += [fmtDate(t.tanggal), t.noBukti||'', '"'+(t.uraian||'').replace(/"/g,'""')+'"', t.kodeRekening||'', t.jenisPembayaran, t.tipe, t.jumlahBruto, t.pajak?.jenis||'', t.pajak?.nominal||0, t.jumlahNetto].join(',') + '\n';
+      csv += [fmtDate(t.tanggal), t.noBukti||'', '"'+(t.uraian||'').replace(/"/g,'""')+'"', t.kodeRekening||'', '"'+(t.programKegiatanSNP||'')+'"', t.jenisPembayaran, t.tipe, t.jumlahBruto, t.pajak?.jenis||'', t.pajak?.nominal||0, t.jumlahNetto, '"'+(t.penerima||'').replace(/"/g,'""')+'"'].join(',') + '\n';
     });
     downloadFile('bku_'+(DB.profil.tahunAnggaran||'')+'.csv', csv, 'text/csv');
   });
@@ -1308,7 +1378,7 @@ function attachPageEvents(){
   });
 }
 
-/* ============ IMPORTIR RPD/RKAS & BKU (Excel/CSV) ============ */
+/* ============ IMPORTIR RKAS / RPD / BKU (format resmi ARKAS, Excel/CSV) ============ */
 const BULAN_ID = {januari:0,februari:1,maret:2,april:3,mei:4,juni:5,juli:6,agustus:7,september:8,oktober:9,november:10,desember:11};
 function parseIndoDate(val){
   if(val==null || val==='') return '';
@@ -1336,25 +1406,59 @@ function toNumber(v){
   const n = parseFloat(s);
   return isNaN(n)?0:n;
 }
-function readSheetRows(file, cb){
+function isBlankish(v){
+  if(v==null) return true;
+  const s = String(v).trim();
+  if(s==='') return true;
+  // placeholder dots used in the official ARKAS BKU template for empty "Penerima"
+  if(/^[.…\s]+$/.test(s)) return true;
+  return false;
+}
+function readWorkbook(file, cb){
   const reader = new FileReader();
   reader.onload = e=>{
     const wb = XLSX.read(e.target.result, {type:'binary', cellDates:false});
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
-    cb(rows);
+    cb(wb);
   };
   reader.readAsBinaryString(file);
 }
-function findHeaderRow(rows, keywordSets){
-  let bestIdx = 0, bestScore = -1;
-  for(let i=0;i<Math.min(rows.length,8);i++){
-    const rowText = rows[i].map(c=>String(c||'').toLowerCase().trim());
-    let score = 0;
-    keywordSets.forEach(kw=>{ if(rowText.some(c=>c.includes(kw))) score++; });
-    if(score > bestScore){ bestScore = score; bestIdx = i; }
+function sheetToRows(wb, sheetName){
+  const sheet = wb.Sheets[sheetName];
+  if(!sheet) return null;
+  return XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+}
+function pickSheet(wb, preferredNames){
+  // 1) exact/case-insensitive match on preferred sheet names, in priority order
+  for(const pref of preferredNames){
+    const found = wb.SheetNames.find(n=> n.trim().toLowerCase() === pref.toLowerCase());
+    if(found) return found;
   }
-  return bestIdx;
+  // 2) sheet name containing the preferred keyword
+  for(const pref of preferredNames){
+    const found = wb.SheetNames.find(n=> n.trim().toLowerCase().includes(pref.toLowerCase()));
+    if(found) return found;
+  }
+  // 3) fallback: first sheet
+  return wb.SheetNames[0];
+}
+
+/* Combine two header rows (main + sub, as used by the official RKAS/RPD template where
+   cells like "TAHAP I" / "RINCIAN PERHITUNGAN" are merged across two rows and several columns)
+   into a single flat header-label array, forward-filling merged blanks. */
+function buildCombinedHeader(rowA, rowB, width){
+  const filledA = [];
+  let last = '';
+  for(let i=0;i<width;i++){
+    const v = String(rowA[i]||'').trim();
+    if(v) last = v;
+    filledA.push(last);
+  }
+  const combined = [];
+  for(let i=0;i<width;i++){
+    const b = String((rowB&&rowB[i])||'').trim();
+    combined.push(b || filledA[i]);
+  }
+  return combined;
 }
 function colIndexFor(headerRow, aliases){
   const norm = headerRow.map(c=>String(c||'').toLowerCase().trim());
@@ -1364,14 +1468,47 @@ function colIndexFor(headerRow, aliases){
   }
   return -1;
 }
+function findRowIndexContaining(rows, needle, maxScan){
+  const scan = Math.min(rows.length, maxScan||20);
+  for(let i=0;i<scan;i++){
+    const rowText = (rows[i]||[]).map(c=>String(c||'').toLowerCase().trim());
+    if(rowText.some(c=>c.includes(needle))) return i;
+  }
+  return -1;
+}
+/* Try to read a label like "Sumber Dana" / "Nama Sekolah" from the info block at the top of the sheet */
+function readInfoLabel(rows, label, maxScan){
+  const scan = Math.min(rows.length, maxScan||10);
+  for(let i=0;i<scan;i++){
+    const r = rows[i]||[];
+    for(let c=0;c<r.length;c++){
+      if(String(r[c]||'').trim().toLowerCase().startsWith(label.toLowerCase())){
+        for(let c2=c+1;c2<r.length;c2++){
+          if(String(r[c2]||'').trim()!=='') return String(r[c2]).trim();
+        }
+      }
+    }
+  }
+  return '';
+}
 
+/* -------- RKAS / RPD import -------- */
 function importRkasFile(file){
-  readSheetRows(file, rows=>{
-    const hIdx = findHeaderRow(rows, ['kode rekening','uraian','vol','harga satuan','jumlah']);
-    const header = rows[hIdx];
-    const dataRows = rows.slice(hIdx+1).filter(r=> r.some(c=>String(c||'').trim()!==''));
+  readWorkbook(file, wb=>{
+    const sheetName = pickSheet(wb, ['RKAS','RPD']);
+    const rows = sheetToRows(wb, sheetName);
+    if(!rows){ document.getElementById('importRkasStatus').textContent = 'Sheet tidak ditemukan pada file.'; return; }
+
+    const hIdx = findRowIndexContaining(rows, 'kode rekening', 20);
+    if(hIdx === -1){ document.getElementById('importRkasStatus').textContent = 'Format tidak dikenali: kolom "Kode Rekening" tidak ditemukan.'; return; }
+    const rowA = rows[hIdx];
+    const rowB = rows[hIdx+1] || [];
+    const width = Math.max(rowA.length, rowB.length, 14);
+    const header = buildCombinedHeader(rowA, rowB, width);
 
     const cKode = colIndexFor(header,['kode rekening']);
+    const cNamaRef = colIndexFor(header,['nama referensi']);
+    const cProgram = colIndexFor(header,['program kegiatan']);
     const cUraian = colIndexFor(header,['uraian']);
     const cVol = colIndexFor(header,['vol']);
     const cSatuan = colIndexFor(header,['satuan']);
@@ -1383,54 +1520,67 @@ function importRkasFile(file){
     const cTw4 = colIndexFor(header,['triwulan 4']);
     const hasTriwulan = cTw1!==-1 || cTw2!==-1 || cTw3!==-1 || cTw4!==-1;
 
-    let count = 0;
-    dataRows.forEach(r=>{
-      const kode = cKode!==-1? String(r[cKode]||'').trim() : '';
-      const uraian = cUraian!==-1? String(r[cUraian]||'').trim() : '';
-      if(!kode && !uraian) return;
-      const volume = cVol!==-1? toNumber(r[cVol]) : 1;
-      const satuan = cSatuan!==-1? String(r[cSatuan]||'').trim() : '';
-      const harga = cHarga!==-1? toNumber(r[cHarga]) : 0;
-      const totalJumlah = cJumlah!==-1? toNumber(r[cJumlah]) : volume*harga;
+    const sumberDana = readInfoLabel(rows, 'Sumber Dana', hIdx) || 'BOS Reguler';
+    const dataRows = rows.slice(hIdx+2);
 
-      if(hasTriwulan){
-        const twPercents = [
-          {label:'I', val:cTw1!==-1? toNumber(r[cTw1]):0},
-          {label:'II', val:cTw2!==-1? toNumber(r[cTw2]):0},
-          {label:'III', val:cTw3!==-1? toNumber(r[cTw3]):0},
-          {label:'IV', val:cTw4!==-1? toNumber(r[cTw4]):0}
-        ].filter(t=>t.val>0);
-        if(twPercents.length===0){
-          DB.rkas.push({id:uid(),kode,uraian,sumber:'BOS Reguler',volume,satuan,harga,jumlah:totalJumlah,triwulan:'I'});
-          count++;
-        } else {
-          twPercents.forEach(t=>{
-            const pct = t.val<=1? t.val*100 : t.val; // handle 0.5 or 50
-            DB.rkas.push({id:uid(),kode,uraian,sumber:'BOS Reguler',volume,satuan,harga,jumlah:Math.round(totalJumlah*pct/100),triwulan:t.label});
-            count++;
-          });
-        }
+    let count = 0, skipped = 0;
+    dataRows.forEach(r=>{
+      if(!r || !r.some(c=>String(c||'').trim()!=='')) return;
+      const uraianTxt = cUraian!==-1? String(r[cUraian]||'').trim() : '';
+      if(!uraianTxt || uraianTxt.toUpperCase()==='TOTAL'){ return; }
+      const volume = cVol!==-1? toNumber(r[cVol]) : 0;
+      const harga = cHarga!==-1? toNumber(r[cHarga]) : 0;
+      // Only leaf rows (actual line items) carry Vol./Harga Satuan — category/subtotal rows don't.
+      if(!(volume>0 && harga>0)){ skipped++; return; }
+
+      const kode = cKode!==-1? String(r[cKode]||'').trim() : '';
+      const namaReferensi = cNamaRef!==-1? String(r[cNamaRef]||'').trim() : '';
+      const programKegiatanSNP = cProgram!==-1? String(r[cProgram]||'').trim() : '';
+      const jumlah = cJumlah!==-1 && toNumber(r[cJumlah])>0 ? toNumber(r[cJumlah]) : volume*harga;
+
+      let tw1Pct=0, tw2Pct=0, tw3Pct=0, tw4Pct=0;
+      if(hasTriwulan && jumlah>0){
+        const a1 = cTw1!==-1? toNumber(r[cTw1]):0, a2 = cTw2!==-1? toNumber(r[cTw2]):0;
+        const a3 = cTw3!==-1? toNumber(r[cTw3]):0, a4 = cTw4!==-1? toNumber(r[cTw4]):0;
+        tw1Pct = Math.round(a1/jumlah*10000)/100;
+        tw2Pct = Math.round(a2/jumlah*10000)/100;
+        tw3Pct = Math.round(a3/jumlah*10000)/100;
+        tw4Pct = Math.round(a4/jumlah*10000)/100;
       } else {
-        DB.rkas.push({id:uid(),kode,uraian,sumber:'BOS Reguler',volume,satuan,harga,jumlah:totalJumlah,triwulan:'I'});
-        count++;
+        tw1Pct = 100; // fallback: file (mis. RPD per satu Tahap) tanpa rincian triwulan
       }
+
+      DB.rkas.push({
+        id:uid(), kode, namaReferensi, programKegiatanSNP, uraian:uraianTxt,
+        sumber:sumberDana, volume, satuan: cSatuan!==-1? String(r[cSatuan]||'').trim():'', harga, jumlah,
+        tw1Pct, tw2Pct, tw3Pct, tw4Pct
+      });
+      count++;
     });
     saveDB();
-    document.getElementById('importRkasStatus').textContent = `Berhasil impor ${count} baris RKAS.`;
+    document.getElementById('importRkasStatus').textContent = `Sheet "${sheetName}": berhasil impor ${count} rincian RKAS (${skipped} baris kategori/subtotal dilewati).`;
     toast(`Impor RKAS selesai: ${count} baris ditambahkan.`);
     render();
   });
 }
 
+/* -------- BKU import -------- */
 function importBkuFile(file){
-  readSheetRows(file, rows=>{
-    const hIdx = findHeaderRow(rows, ['tanggal','uraian','penerimaan','pengeluaran']);
-    const header = rows[hIdx];
+  readWorkbook(file, wb=>{
+    const sheetName = pickSheet(wb, ['BKU']);
+    const rows = sheetToRows(wb, sheetName);
+    if(!rows){ document.getElementById('importBkuStatus').textContent = 'Sheet tidak ditemukan pada file.'; return; }
+
+    const hIdx = findRowIndexContaining(rows, 'tanggal', 20);
+    if(hIdx === -1){ document.getElementById('importBkuStatus').textContent = 'Format tidak dikenali: kolom "Tanggal" tidak ditemukan.'; return; }
+    const header = (rows[hIdx]||[]).map(c=>String(c||'').trim());
     const dataRows = rows.slice(hIdx+1).filter(r=> r.some(c=>String(c||'').trim()!==''));
 
     const cTgl = colIndexFor(header,['tanggal']);
     const cBukti = colIndexFor(header,['no bukti','no. bukti','nomor bukti']);
+    const cProgram = colIndexFor(header,['program kegiatan']);
     const cKode = colIndexFor(header,['kode rekening']);
+    const cNamaRek = colIndexFor(header,['nama rekening']);
     const cUraian = colIndexFor(header,['uraian']);
     const cMasuk = colIndexFor(header,['penerimaan']);
     const cKeluar = colIndexFor(header,['pengeluaran']);
@@ -1441,25 +1591,33 @@ function importBkuFile(file){
       const uraian = cUraian!==-1? String(r[cUraian]||'').trim() : '';
       const masuk = cMasuk!==-1? toNumber(r[cMasuk]) : 0;
       const keluar = cKeluar!==-1? toNumber(r[cKeluar]) : 0;
+      // Skips rows with no amount at all — this includes the "SALDO AWAL ..." opening-balance line.
       if(!uraian || (masuk===0 && keluar===0)){ skipped++; return; }
       const tanggal = cTgl!==-1? parseIndoDate(r[cTgl]) : '';
-      const uraianLower = uraian.toLowerCase();
+      const namaRekening = cNamaRek!==-1? String(r[cNamaRek]||'').trim() : '';
+      const programKegiatanSNP = cProgram!==-1? String(r[cProgram]||'').trim() : '';
+      const kodeRekening = cKode!==-1? String(r[cKode]||'').trim() : '';
+      const penerimaRaw = cPenerima!==-1? String(r[cPenerima]||'').trim() : '';
+      const penerima = isBlankish(penerimaRaw) ? '' : penerimaRaw;
+
+      const textForGuess = (uraian+' '+namaRekening).toLowerCase();
       let metode = 'tunai';
-      if(uraianLower.includes('bank') || uraianLower.includes('transfer')) metode = 'bank';
+      if(/\bbank\b|transfer|giro|rekening koran|pergeseran/.test(textForGuess)) metode = 'bank';
+
       const tipe = masuk>0 ? 'masuk' : 'keluar';
       const bruto = masuk>0 ? masuk : keluar;
       DB.transaksi.push({
         id:uid(), tanggal, noBukti: cBukti!==-1? String(r[cBukti]||'').trim(): '', uraian,
-        kodeRekening: cKode!==-1? String(r[cKode]||'').trim(): '',
+        kodeRekening, namaRekening, programKegiatanSNP,
         jenisPembayaran: metode, tipe, jumlahBruto: bruto,
         pajak:{jenis:'Tidak dipungut', persen:0, nominal:0},
         jumlahNetto: bruto,
-        penerima: cPenerima!==-1? String(r[cPenerima]||'').trim(): ''
+        penerima
       });
       count++;
     });
     saveDB();
-    document.getElementById('importBkuStatus').textContent = `Berhasil impor ${count} transaksi BKU. (${skipped} baris dilewati karena kosong)`;
+    document.getElementById('importBkuStatus').textContent = `Sheet "${sheetName}": berhasil impor ${count} transaksi BKU (${skipped} baris dilewati, termasuk saldo awal/baris kosong).`;
     toast(`Impor BKU selesai: ${count} transaksi ditambahkan.`);
     render();
   });
