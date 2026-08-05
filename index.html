@@ -122,6 +122,7 @@
     #main{padding:0;}
     body{background:#fff;}
     .card{border:none;box-shadow:none;}
+    #main > *:not(.print-target){display:none!important;}
   }
 </style>
 </head>
@@ -208,7 +209,7 @@ const NAV = [
   {group:'Data Dasar', items:[
     {id:'profil', label:'Profil Sekolah', ic:'▤'},
     {id:'penerimaan', label:'Penerimaan Dana', ic:'⬇'},
-    {id:'rkas', label:'RKAS & Kode Rekening', ic:'▦'}
+    {id:'rkas', label:'RPD & Kode Rekening', ic:'▦'}
   ]},
   {group:'Penatausahaan', items:[
     {id:'bku', label:'Buku Kas Umum', ic:'✎'},
@@ -354,7 +355,7 @@ function pageDasbor(){
   ${head('SDN 4 Merembujaya','Dasbor','Ringkasan keuangan dana BOS tahun anggaran '+ (DB.profil.tahunAnggaran||'-'))}
   <div class="grid grid-4">
     <div class="stat pos"><div class="lbl">Total Penerimaan Dana</div><div class="val">${fmtRp(totalPenerimaan)}</div></div>
-    <div class="stat"><div class="lbl">Total Anggaran RKAS</div><div class="val">${fmtRp(totalRKAS)}</div></div>
+    <div class="stat"><div class="lbl">Total Anggaran RPD</div><div class="val">${fmtRp(totalRKAS)}</div></div>
     <div class="stat neg"><div class="lbl">Total Pengeluaran BKU</div><div class="val">${fmtRp(totalKeluar)}</div></div>
     <div class="stat"><div class="lbl">Pajak Terpotong</div><div class="val">${fmtRp(totalPajak)}</div></div>
   </div>
@@ -364,7 +365,7 @@ function pageDasbor(){
   </div>
   <div class="card" style="margin-top:18px;">
     <h2>Realisasi per Komponen Kegiatan (Program SNP)</h2>
-    ${komponen.length===0?'<div class="empty">Belum ada data RKAS/BKU untuk dibandingkan.</div>':`
+    ${komponen.length===0?'<div class="empty">Belum ada data RPD/BKU untuk dibandingkan.</div>':`
     <table><thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
     <tbody>${komponen.map(k=>`<tr><td>${k.komponen}</td><td class="num">${fmtRp(k.anggaran)}</td><td class="num">${fmtRp(k.realisasi)}</td><td class="num">${fmtRp(k.sisa)}</td></tr>`).join('')}</tbody></table>`}
   </div>
@@ -439,7 +440,7 @@ function pagePenerimaan(){
   </div>`;
 }
 
-/* ============ RKAS ============ */
+/* ============ RPD (dahulu RKAS) ============ */
 function pageRkas(){
   const rows = DB.rkas;
   const editing = rkasEditingId ? rows.find(r=>r.id===rkasEditingId) : null;
@@ -447,17 +448,17 @@ function pageRkas(){
   const totalJumlah = rows.reduce((s,r)=>s+Number(r.jumlah||0),0);
   const totalRealisasi = rows.reduce((s,r)=>s+realisasiForKode(r.kode),0);
   return `
-  ${head('Data Dasar','RKAS & Kode Rekening','Rencana Kegiatan dan Anggaran Sekolah — mengikuti format Kode Rekening / Program Kegiatan SNP ARKAS.')}
+  ${head('Data Dasar','RPD & Kode Rekening','Rincian Penggunaan Dana (RPD) per tahap — daftar rincian belanja per kode rekening, siap dipakai langsung untuk membuat Nota Pesanan otomatis.')}
   <div class="card no-print">
-    <h2>Impor dari File RKAS / RPD (Excel)</h2>
-    <p class="hint">Mendukung file resmi ARKAS dengan sheet bernama <b>RKAS</b> (rincian lengkap per Triwulan 1–4) atau <b>RPD</b> (rincian per satu Tahap). Jika file berisi beberapa sheet (seperti contoh RKAS/RPD/BKU dalam satu berkas), sheet <b>RKAS</b> diprioritaskan. Kolom yang dikenali: Kode Rekening, Nama Referensi, Program Kegiatan SNP, Uraian, Vol., Satuan, Harga Satuan, Jumlah, Triwulan 1–4. Baris kategori/subtotal (tanpa Vol./Harga Satuan) otomatis dilewati — hanya baris rincian barang/jasa yang diimpor.</p>
+    <h2>Impor dari File RPD / RKAS (Excel)</h2>
+    <p class="hint">Mendukung file resmi ARKAS dengan sheet bernama <b>RPD</b> (rincian per satu Tahap — direkomendasikan karena paling sederhana untuk dibuatkan Nota Pesanan otomatis) atau <b>RKAS</b> (rincian lengkap per Triwulan 1–4, jika file RPD tidak tersedia). Jika file berisi beberapa sheet, sheet <b>RPD</b> diprioritaskan. Kolom yang dikenali: Kode Rekening, Nama Referensi, Program Kegiatan SNP, Uraian, Vol., Satuan, Harga Satuan, Jumlah, Triwulan 1–4 (jika ada). Baris kategori/subtotal (tanpa Vol./Harga Satuan) otomatis dilewati — hanya baris rincian barang/jasa yang diimpor.</p>
     <input type="file" id="fileImportRkas" accept=".xlsx,.xls,.csv">
     <br><br>
-    <button class="btn outline" id="btnImportRkas">Impor File RKAS/RPD</button>
+    <button class="btn outline" id="btnImportRkas">Impor File RPD/RKAS</button>
     <div id="importRkasStatus" class="hint"></div>
   </div>
   <div class="card">
-    <h2>${editing?'Edit Rincian RKAS':'Tambah Rincian RKAS'}</h2>
+    <h2>${editing?'Edit Rincian RPD':'Tambah Rincian RPD'}</h2>
     <div class="row">
       <div class="field"><label>Kode Rekening</label><input id="r_kode" placeholder="mis. 5.1.02.01.01.0036" value="${editing?editing.kode:''}"></div>
       <div class="field"><label>Nama Referensi (nama rekening belanja)</label><input id="r_namaReferensi" placeholder="mis. Belanja Alat/Bahan untuk Kegiatan Kantor" value="${editing?(editing.namaReferensi||''):''}"></div>
@@ -472,31 +473,29 @@ function pageRkas(){
           <option${optSel('BOP Kesetaraan', editing?editing.sumber:'')}>BOP Kesetaraan</option>
         </select>
       </div>
+      <div class="field"><label>Tahap</label>
+        <select id="r_tahap">
+          ${['Tahap I','Tahap II','Tahap III'].map(o=>`<option${optSel(o, editing?editing.tahap:'')}>${o}</option>`).join('')}
+        </select>
+      </div>
       <div class="field"><label>Volume</label><input type="number" id="r_volume" value="${editing?editing.volume:1}"></div>
       <div class="field"><label>Satuan</label><input id="r_satuan" placeholder="paket/bulan/orang" value="${editing?(editing.satuan||''):''}"></div>
       <div class="field"><label>Harga Satuan (Rp)</label><input type="number" id="r_harga" placeholder="0" value="${editing?editing.harga:''}"></div>
     </div>
-    <p class="hint">Rencana pencairan per triwulan (opsional, dalam %). Total idealnya 100%.</p>
-    <div class="row">
-      <div class="field"><label>Tahap I · Triwulan 1 (%)</label><input type="number" id="r_tw1" placeholder="0" step="0.1" value="${editing?(editing.tw1Pct||''):''}"></div>
-      <div class="field"><label>Tahap I · Triwulan 2 (%)</label><input type="number" id="r_tw2" placeholder="0" step="0.1" value="${editing?(editing.tw2Pct||''):''}"></div>
-      <div class="field"><label>Tahap II · Triwulan 3 (%)</label><input type="number" id="r_tw3" placeholder="0" step="0.1" value="${editing?(editing.tw3Pct||''):''}"></div>
-      <div class="field"><label>Tahap II · Triwulan 4 (%)</label><input type="number" id="r_tw4" placeholder="0" step="0.1" value="${editing?(editing.tw4Pct||''):''}"></div>
-    </div>
-    <button class="btn gold" id="btnAddRkas">${editing?'Perbarui RKAS':'Simpan RKAS'}</button>
+    <button class="btn gold" id="btnAddRkas">${editing?'Perbarui RPD':'Simpan RPD'}</button>
     ${editing?' <button class="btn outline" id="btnCancelRkas">Batal Edit</button>':''}
   </div>
   <div class="card">
-    <h2>Daftar RKAS</h2>
-    ${rows.length===0?'<div class="empty">Belum ada rincian RKAS.</div>':`
+    <h2>Daftar RPD</h2>
+    ${rows.length===0?'<div class="empty">Belum ada rincian RPD.</div>':`
     <div style="overflow-x:auto;">
-    <table><thead><tr><th>Kode</th><th>Nama Referensi</th><th>Program SNP</th><th>Uraian</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th class="num">TW1</th><th class="num">TW2</th><th class="num">TW3</th><th class="num">TW4</th><th class="num">Realisasi</th><th class="num">Sisa</th><th class="no-print"></th></tr></thead>
+    <table><thead><tr><th>Kode</th><th>Nama Referensi</th><th>Program SNP</th><th>Uraian</th><th>Tahap</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th class="num">Realisasi</th><th class="num">Sisa</th><th class="no-print"></th></tr></thead>
     <tbody>${rows.map(r=>{
       const real = realisasiForKode(r.kode);
       const sisa = Number(r.jumlah||0)-real;
-      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="num">${fmtRp(twAmt(r,1))}</td><td class="num">${fmtRp(twAmt(r,2))}</td><td class="num">${fmtRp(twAmt(r,3))}</td><td class="num">${fmtRp(twAmt(r,4))}</td><td class="num">${fmtRp(real)}</td><td class="num">${fmtRp(sisa)}</td><td class="no-print"><button class="btn sm outline" data-edit-rkas="${r.id}">Edit</button> <button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
+      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td>${r.tahap||'-'}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="num">${fmtRp(real)}</td><td class="num">${fmtRp(sisa)}</td><td class="no-print"><button class="btn sm outline" data-edit-rkas="${r.id}">Edit</button> <button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
     }).join('')}</tbody>
-    <tfoot><tr><td colspan="7"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(totalJumlah)}</b></td><td colspan="4"></td><td class="num"><b>${fmtRp(totalRealisasi)}</b></td><td class="num"><b>${fmtRp(totalJumlah-totalRealisasi)}</b></td><td></td></tr></tfoot></table>
+    <tfoot><tr><td colspan="8"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(totalJumlah)}</b></td><td class="num"><b>${fmtRp(totalRealisasi)}</b></td><td class="num"><b>${fmtRp(totalJumlah-totalRealisasi)}</b></td><td></td></tr></tfoot></table>
     </div>`}
   </div>`;
 }
@@ -557,7 +556,7 @@ function pageBKU(){
     </div>
     <div class="field"><label>Uraian</label><input id="t_uraian" placeholder="mis. Pembelian ATK bulan Agustus" value="${editing?editing.uraian:''}"></div>
     <div class="row">
-      <div class="field"><label>Kode Rekening (RKAS)</label>
+      <div class="field"><label>Kode Rekening (RPD)</label>
         <select id="t_kode"><option value="">— pilih (opsional) —</option>${rkasOptions}</select>
       </div>
       <div class="field"><label>Jenis Kegiatan (untuk hitung pajak)</label>
@@ -692,7 +691,7 @@ function pageDokumen(){
     ${tabs.map(t=>`<button class="${dokumenTab===t.id?'active':''}" data-dokumen-tab="${t.id}">${t.label}</button>`).join('')}
   </div>
   ${renderers[dokumenTab]()}
-  <div id="dokPrintArea"></div>`;
+  <div id="dokPrintArea" class="print-target"></div>`;
 }
 
 function renderKwitansiTab(){
@@ -764,7 +763,12 @@ function printKwitansi(k){
       <div class="grid grid-3" style="margin-top:36px;text-align:center;">
         <div>Mengetahui,<br>Kepala Sekolah<br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}</div>
         <div>Dibayar oleh,<br>Bendahara BOSP<br><br><br><br><b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
-        <div>${p.kabupaten||''}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,<br><br><br><br><b>${k.penerima||''}</b></div>
+        <div>${p.kabupaten||''}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,
+          <div style="height:64px;display:flex;align-items:flex-end;justify-content:center;margin:4px 0;">
+            <div style="font-size:8.5px;color:#aaa;border:1px dashed #ccc;border-radius:3px;width:85px;height:50px;display:flex;align-items:center;justify-content:center;line-height:1.2;">ruang materai<br>bila diperlukan</div>
+          </div>
+          <b>${k.penerima||''}</b>
+        </div>
       </div>
     </div>
     <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
@@ -779,13 +783,13 @@ function renderNotaTab(){
   const rkasOptions = DB.rkas.map(r=>`<option value="${r.id}">${r.kode} — ${r.uraian} (${r.volume} ${r.satuan} × ${fmtRp(r.harga)})</option>`).join('');
   return `
   <div class="card no-print">
-    <h2>Isi Otomatis dari RKAS/RPD</h2>
-    <p class="hint">Item nota bisa diambil langsung dari rincian RKAS/RPD (nama barang, volume, satuan, harga satuan) tanpa mengetik ulang.</p>
-    <div class="field"><label>Pilih Rincian RKAS (bisa lebih dari satu, tahan Ctrl/Cmd untuk memilih banyak)</label>
+    <h2>Isi Otomatis dari RPD</h2>
+    <p class="hint">Item nota bisa diambil langsung dari rincian RPD (nama barang, volume, satuan, harga satuan) tanpa mengetik ulang — karena RPD sudah berupa rincian per barang/jasa, isian nota jadi lebih cepat dan akurat dibanding dari RKAS.</p>
+    <div class="field"><label>Pilih Rincian RPD (bisa lebih dari satu, tahan Ctrl/Cmd untuk memilih banyak)</label>
       <select id="n_fromRkas" multiple size="6">${rkasOptions}</select>
     </div>
     <button class="btn outline" id="btnFillNotaFromRkas">Tambahkan sebagai Item Nota</button>
-    <button class="btn outline" id="btnAutoNotaAll">Buat Nota Otomatis per Item RKAS Tersisa (${rkasBelum.length})</button>
+    <button class="btn outline" id="btnAutoNotaAll">Buat Nota Otomatis per Item RPD Tersisa (${rkasBelum.length})</button>
   </div>
   <div class="card">
     <h2>${editing?'Edit Nota Pesanan':'Buat Nota Pesanan Baru'}</h2>
@@ -1077,7 +1081,7 @@ function pageLaporan(){
     </div>
     <button class="btn gold no-print" id="btnGenLaporan">Tampilkan Laporan</button>
   </div>
-  <div id="laporanArea"></div>
+  <div id="laporanArea" class="print-target"></div>
   <div class="card">
     <h2>Ekspor Buku Kas Umum (CSV)</h2>
     <p class="hint">Unduh seluruh transaksi BKU dalam format CSV untuk diolah di Excel.</p>
@@ -1113,7 +1117,7 @@ function generateLaporanHtml(sumber, periode){
       </tbody>
     </table>
     <h3 style="margin-top:22px;">Rekap Realisasi per Komponen (Program Kegiatan SNP)</h3>
-    ${komponen.length===0?'<div class="empty">Belum ada data RKAS/BKU.</div>':`
+    ${komponen.length===0?'<div class="empty">Belum ada data RPD/BKU.</div>':`
     <table><thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
     <tbody>${komponen.map(k=>`<tr><td>${k.komponen}</td><td class="num">${fmtRp(k.anggaran)}</td><td class="num">${fmtRp(k.realisasi)}</td><td class="num">${fmtRp(k.sisa)}</td></tr>`).join('')}</tbody></table>`}
     <div class="grid grid-2" style="margin-top:34px;">
@@ -1217,15 +1221,15 @@ function attachPageEvents(){
     saveDB(); render();
   }));
 
-  // Impor RKAS
+  // Impor RPD/RKAS
   const btnImportRkas = document.getElementById('btnImportRkas');
   if(btnImportRkas) btnImportRkas.addEventListener('click', ()=>{
     const file = document.getElementById('fileImportRkas').files[0];
-    if(!file){ toast('Pilih file RKAS/RPD terlebih dahulu.'); return; }
+    if(!file){ toast('Pilih file RPD/RKAS terlebih dahulu.'); return; }
     importRkasFile(file);
   });
 
-  // RKAS
+  // RPD
   const btnAddRkas = document.getElementById('btnAddRkas');
   if(btnAddRkas) btnAddRkas.addEventListener('click', ()=>{
     const kode = document.getElementById('r_kode').value;
@@ -1235,18 +1239,16 @@ function attachPageEvents(){
     if(!kode || !uraian){ toast('Isi kode rekening dan uraian.'); return; }
     const data = {
       kode, namaReferensi:document.getElementById('r_namaReferensi').value, programKegiatanSNP:document.getElementById('r_programSNP').value,
-      uraian, sumber:document.getElementById('r_sumber').value, volume, satuan:document.getElementById('r_satuan').value, harga, jumlah:volume*harga,
-      tw1Pct:Number(document.getElementById('r_tw1').value||0), tw2Pct:Number(document.getElementById('r_tw2').value||0),
-      tw3Pct:Number(document.getElementById('r_tw3').value||0), tw4Pct:Number(document.getElementById('r_tw4').value||0)
+      uraian, sumber:document.getElementById('r_sumber').value, tahap:document.getElementById('r_tahap').value, volume, satuan:document.getElementById('r_satuan').value, harga, jumlah:volume*harga
     };
     if(rkasEditingId){
       const idx = DB.rkas.findIndex(r=>r.id===rkasEditingId);
       if(idx!==-1) DB.rkas[idx] = {...DB.rkas[idx], ...data};
       rkasEditingId = null;
-      toast('Rincian RKAS diperbarui.');
+      toast('Rincian RPD diperbarui.');
     } else {
       DB.rkas.push({ id:uid(), ...data });
-      toast('Rincian RKAS ditambahkan.');
+      toast('Rincian RPD ditambahkan.');
     }
     saveDB(); render();
   });
@@ -1411,12 +1413,12 @@ function attachPageEvents(){
     printKwitansi(DB.kwitansi.find(x=>x.id===b.dataset.printKwitansi));
   }));
 
-  // Nota Pesanan — auto-generate dari RKAS
+  // Nota Pesanan — auto-generate dari RPD
   const btnFillNotaFromRkas = document.getElementById('btnFillNotaFromRkas');
   if(btnFillNotaFromRkas) btnFillNotaFromRkas.addEventListener('click', ()=>{
     const sel = document.getElementById('n_fromRkas');
     const ids = Array.from(sel.selectedOptions).map(o=>o.value);
-    if(ids.length===0){ toast('Pilih minimal satu rincian RKAS.'); return; }
+    if(ids.length===0){ toast('Pilih minimal satu rincian RPD.'); return; }
     const items = ids.map(id=>DB.rkas.find(r=>r.id===id)).filter(Boolean);
     const itemsTextarea = document.getElementById('n_items');
     const newLines = items.map(r=>`${r.uraian} | ${r.volume} | ${r.satuan} | ${r.harga}`);
@@ -1425,12 +1427,12 @@ function attachPageEvents(){
     const idsField = document.getElementById('n_sourceRkasIds');
     const currentIds = idsField.value ? idsField.value.split(',').filter(Boolean) : [];
     idsField.value = [...new Set([...currentIds, ...ids])].join(',');
-    toast(`${items.length} item ditambahkan dari RKAS.`);
+    toast(`${items.length} item ditambahkan dari RPD.`);
   });
   const btnAutoNotaAll = document.getElementById('btnAutoNotaAll');
   if(btnAutoNotaAll) btnAutoNotaAll.addEventListener('click', ()=>{
     const rkasBelum = DB.rkas.filter(r=> !DB.notaPesanan.some(n=> (n.sourceRkasIds||[]).includes(r.id)));
-    if(rkasBelum.length===0){ toast('Semua rincian RKAS sudah memiliki nota pesanan.'); return; }
+    if(rkasBelum.length===0){ toast('Semua rincian RPD sudah memiliki nota pesanan.'); return; }
     rkasBelum.forEach((r,idx)=>{
       DB.notaPesanan.push({
         id:uid(), nomor: 'NP-'+(r.kode||'').replace(/[^0-9]/g,'').slice(-6)+'-'+(idx+1),
@@ -1439,7 +1441,7 @@ function attachPageEvents(){
         sourceRkasIds:[r.id]
       });
     });
-    saveDB(); toast(`${rkasBelum.length} nota pesanan dibuat otomatis dari RKAS.`); render();
+    saveDB(); toast(`${rkasBelum.length} nota pesanan dibuat otomatis dari RPD.`); render();
   });
 
   // Nota Pesanan
@@ -1621,7 +1623,7 @@ function attachPageEvents(){
   });
 }
 
-/* ============ IMPORTIR RKAS / RPD / BKU (format resmi ARKAS, Excel/CSV) ============ */
+/* ============ IMPORTIR RPD / RKAS / BKU (format resmi ARKAS, Excel/CSV) ============ */
 const BULAN_ID = {januari:0,februari:1,maret:2,april:3,mei:4,juni:5,juli:6,agustus:7,september:8,oktober:9,november:10,desember:11};
 function parseIndoDate(val){
   if(val==null || val==='') return '';
@@ -1735,10 +1737,10 @@ function readInfoLabel(rows, label, maxScan){
   return '';
 }
 
-/* -------- RKAS / RPD import -------- */
+/* -------- RPD / RKAS import -------- */
 function importRkasFile(file){
   readWorkbook(file, wb=>{
-    const sheetName = pickSheet(wb, ['RKAS','RPD']);
+    const sheetName = pickSheet(wb, ['RPD','RKAS']);
     const rows = sheetToRows(wb, sheetName);
     if(!rows){ document.getElementById('importRkasStatus').textContent = 'Sheet tidak ditemukan pada file.'; return; }
 
@@ -1764,6 +1766,7 @@ function importRkasFile(file){
     const hasTriwulan = cTw1!==-1 || cTw2!==-1 || cTw3!==-1 || cTw4!==-1;
 
     const sumberDana = readInfoLabel(rows, 'Sumber Dana', hIdx) || 'BOS Reguler';
+    const tahapInfo = readInfoLabel(rows, 'Tahap', hIdx) || '';
     const dataRows = rows.slice(hIdx+2);
 
     let count = 0, skipped = 0;
@@ -1781,28 +1784,15 @@ function importRkasFile(file){
       const programKegiatanSNP = cProgram!==-1? String(r[cProgram]||'').trim() : '';
       const jumlah = cJumlah!==-1 && toNumber(r[cJumlah])>0 ? toNumber(r[cJumlah]) : volume*harga;
 
-      let tw1Pct=0, tw2Pct=0, tw3Pct=0, tw4Pct=0;
-      if(hasTriwulan && jumlah>0){
-        const a1 = cTw1!==-1? toNumber(r[cTw1]):0, a2 = cTw2!==-1? toNumber(r[cTw2]):0;
-        const a3 = cTw3!==-1? toNumber(r[cTw3]):0, a4 = cTw4!==-1? toNumber(r[cTw4]):0;
-        tw1Pct = Math.round(a1/jumlah*10000)/100;
-        tw2Pct = Math.round(a2/jumlah*10000)/100;
-        tw3Pct = Math.round(a3/jumlah*10000)/100;
-        tw4Pct = Math.round(a4/jumlah*10000)/100;
-      } else {
-        tw1Pct = 100; // fallback: file (mis. RPD per satu Tahap) tanpa rincian triwulan
-      }
-
       DB.rkas.push({
         id:uid(), kode, namaReferensi, programKegiatanSNP, uraian:uraianTxt,
-        sumber:sumberDana, volume, satuan: cSatuan!==-1? String(r[cSatuan]||'').trim():'', harga, jumlah,
-        tw1Pct, tw2Pct, tw3Pct, tw4Pct
+        sumber:sumberDana, tahap:tahapInfo, volume, satuan: cSatuan!==-1? String(r[cSatuan]||'').trim():'', harga, jumlah
       });
       count++;
     });
     saveDB();
-    document.getElementById('importRkasStatus').textContent = `Sheet "${sheetName}": berhasil impor ${count} rincian RKAS (${skipped} baris kategori/subtotal dilewati).`;
-    toast(`Impor RKAS selesai: ${count} baris ditambahkan.`);
+    document.getElementById('importRkasStatus').textContent = `Sheet "${sheetName}": berhasil impor ${count} rincian RPD (${skipped} baris kategori/subtotal dilewati).`;
+    toast(`Impor RPD selesai: ${count} baris ditambahkan.`);
     render();
   });
 }
