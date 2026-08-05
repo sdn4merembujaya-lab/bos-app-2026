@@ -446,7 +446,6 @@ function pageRkas(){
   const editing = rkasEditingId ? rows.find(r=>r.id===rkasEditingId) : null;
   const standarOpt = STANDAR_SNP.map(s=>`<option${optSel(s, editing?editing.programKegiatanSNP:'')}>${s}</option>`).join('');
   const totalJumlah = rows.reduce((s,r)=>s+Number(r.jumlah||0),0);
-  const totalRealisasi = rows.reduce((s,r)=>s+realisasiForKode(r.kode),0);
   return `
   ${head('Data Dasar','RPD & Kode Rekening','Rincian Penggunaan Dana (RPD) per tahap — daftar rincian belanja per kode rekening, siap dipakai langsung untuk membuat Nota Pesanan otomatis.')}
   <div class="card no-print">
@@ -489,13 +488,11 @@ function pageRkas(){
     <h2>Daftar RPD</h2>
     ${rows.length===0?'<div class="empty">Belum ada rincian RPD.</div>':`
     <div style="overflow-x:auto;">
-    <table><thead><tr><th>Kode</th><th>Nama Referensi</th><th>Program SNP</th><th>Uraian</th><th>Tahap</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th class="num">Realisasi</th><th class="num">Sisa</th><th class="no-print"></th></tr></thead>
+    <table><thead><tr><th>Kode</th><th>Nama Referensi</th><th>Program SNP</th><th>Uraian</th><th>Tahap</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th class="no-print"></th></tr></thead>
     <tbody>${rows.map(r=>{
-      const real = realisasiForKode(r.kode);
-      const sisa = Number(r.jumlah||0)-real;
-      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td>${r.tahap||'-'}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="num">${fmtRp(real)}</td><td class="num">${fmtRp(sisa)}</td><td class="no-print"><button class="btn sm outline" data-edit-rkas="${r.id}">Edit</button> <button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
+      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td>${r.tahap||'-'}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="no-print"><button class="btn sm outline" data-edit-rkas="${r.id}">Edit</button> <button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
     }).join('')}</tbody>
-    <tfoot><tr><td colspan="8"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(totalJumlah)}</b></td><td class="num"><b>${fmtRp(totalRealisasi)}</b></td><td class="num"><b>${fmtRp(totalJumlah-totalRealisasi)}</b></td><td></td></tr></tfoot></table>
+    <tfoot><tr><td colspan="8"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(totalJumlah)}</b></td><td></td></tr></tfoot></table>
     </div>`}
   </div>`;
 }
