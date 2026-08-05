@@ -133,7 +133,7 @@
       <div class="sub">Pertanggungjawaban Dana BOS</div>
     </div>
     <nav id="navlist"></nav>
-    <div class="foot">Data tersimpan lokal di perangkat ini.<br>v2.0 · terinspirasi SmartSPJ</div>
+    <div class="foot" id="sidebarFoot">Data tersimpan lokal di perangkat ini.<br>v2.0 · terinspirasi SmartSPJ</div>
   </aside>
   <main id="main"></main>
 </div>
@@ -152,7 +152,11 @@ const defaultDB = {
   sppd: [],
   suratTugas: [],
   checklistSpj: [],
-  rekonsiliasi: []
+  rekonsiliasi: [],
+  auth: {
+    admin:{ username:'admin', password:'admin123', nama:'Administrator' },
+    bendahara:{ username:'bendahara', password:'bendahara123', nama:'Bendahara BOS' }
+  }
 };
 function loadDB(){
   try{ const raw = localStorage.getItem(DB_KEY); if(!raw) return structuredClone(defaultDB); const d = JSON.parse(raw); return {...structuredClone(defaultDB), ...d}; }
@@ -160,6 +164,14 @@ function loadDB(){
 }
 function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
 let DB = loadDB();
+if(!DB.auth){ DB.auth = structuredClone(defaultDB.auth); saveDB(); }
+
+/* ============ AUTH / LOGIN ============ */
+const SESSION_KEY = 'siperbos_session';
+function getSession(){ try{ return JSON.parse(sessionStorage.getItem(SESSION_KEY)); }catch(e){ return null; } }
+function setSession(role){ sessionStorage.setItem(SESSION_KEY, JSON.stringify({role, at:Date.now()})); }
+function clearSession(){ sessionStorage.removeItem(SESSION_KEY); }
+let currentSession = getSession();
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function fmtRp(n){ n = Number(n)||0; return 'Rp ' + n.toLocaleString('id-ID'); }
@@ -201,6 +213,7 @@ const NAV = [
     {id:'laporan', label:'Laporan & Cetak', ic:'▣'}
   ]},
   {group:'Utilitas', items:[
+    {id:'akun', label:'Pengaturan Akun', ic:'●'},
     {id:'backup', label:'Cadangkan Data', ic:'⟳'}
   ]}
 ];
@@ -213,15 +226,71 @@ function renderNav(){
     ${g.items.map(it=>`<button class="navbtn ${currentPage===it.id?'active':''}" data-page="${it.id}"><span class="ic">${it.ic}</span>${it.label}</button>`).join('')}
   `).join('');
   nav.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>{ currentPage=b.dataset.page; render(); }));
+  const foot = document.getElementById('sidebarFoot');
+  if(foot && currentSession){
+    const acc = DB.auth[currentSession.role];
+    foot.innerHTML = `Masuk sebagai <b style="color:#fff;">${acc?acc.nama:currentSession.role}</b> (${currentSession.role})<br>
+    <button class="btn sm outline" id="btnLogout" style="margin-top:8px;color:#fff;border-color:rgba(255,255,255,.4);">Keluar</button>`;
+    setTimeout(()=>{ const bl = document.getElementById('btnLogout'); if(bl) bl.addEventListener('click', doLogout); },0);
+  }
 }
 
 /* ============ RENDER ROUTER ============ */
 function render(){
+  currentSession = getSession();
+  if(!currentSession){ renderLogin(); return; }
+  document.getElementById('app').style.display = 'flex';
   renderNav();
   const main = document.getElementById('main');
-  const pages = { dasbor:pageDasbor, profil:pageProfil, penerimaan:pagePenerimaan, rkas:pageRkas, bku:pageBKU, pembantu:pagePembantu, dokumen:pageDokumen, checklist:pageChecklist, laporan:pageLaporan, backup:pageBackup };
+  const pages = { dasbor:pageDasbor, profil:pageProfil, penerimaan:pagePenerimaan, rkas:pageRkas, bku:pageBKU, pembantu:pagePembantu, dokumen:pageDokumen, checklist:pageChecklist, laporan:pageLaporan, backup:pageBackup, akun:pageAkun };
   main.innerHTML = pages[currentPage] ? pages[currentPage]() : '<div class="empty">Halaman tidak ditemukan</div>';
   attachPageEvents();
+}
+
+function renderLogin(){
+  document.getElementById('app').style.display = 'none';
+  let box = document.getElementById('loginBox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'loginBox';
+    document.body.appendChild(box);
+  }
+  box.innerHTML = `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy) 0%, var(--navy-deep) 100%);">
+    <div style="background:#fff;border-radius:10px;padding:34px 32px;max-width:380px;width:92%;box-shadow:0 20px 50px rgba(0,0,0,.35);">
+      <div style="text-align:center;margin-bottom:18px;">
+        <div class="serif" style="font-weight:700;font-size:22px;color:var(--navy-deep);">SIPERBOS</div>
+        <div style="font-size:11.5px;letter-spacing:.08em;color:var(--gold);text-transform:uppercase;">Masuk ke Aplikasi</div>
+      </div>
+      <div class="field"><label>Peran</label>
+        <select id="login_role"><option value="admin">Admin</option><option value="bendahara">Bendahara</option></select>
+      </div>
+      <div class="field"><label>Username</label><input id="login_username" placeholder="username"></div>
+      <div class="field"><label>Kata Sandi</label><input type="password" id="login_password" placeholder="kata sandi"></div>
+      <div id="loginError" style="color:var(--red);font-size:12.5px;margin-bottom:8px;"></div>
+      <button class="btn gold" id="btnLogin" style="width:100%;">Masuk</button>
+      <div class="hint" style="text-align:center;margin-top:14px;">Default: admin/admin123 atau bendahara/bendahara123 — segera ganti di menu Pengaturan Akun setelah masuk.</div>
+    </div>
+  </div>`;
+  document.getElementById('btnLogin').addEventListener('click', doLogin);
+  document.getElementById('login_password').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+}
+function doLogin(){
+  const role = document.getElementById('login_role').value;
+  const u = document.getElementById('login_username').value.trim();
+  const pw = document.getElementById('login_password').value;
+  const acc = DB.auth[role];
+  if(acc && acc.username === u && acc.password === pw){
+    setSession(role);
+    document.getElementById('loginBox').remove();
+    render();
+  } else {
+    document.getElementById('loginError').textContent = 'Username atau kata sandi salah.';
+  }
+}
+function doLogout(){
+  clearSession();
+  render();
 }
 
 function head(eyebrow,title,desc){
@@ -934,6 +1003,26 @@ function generateLaporanHtml(sumber, periode){
   </div>`;
 }
 
+/* ============ PENGATURAN AKUN ============ */
+function pageAkun(){
+  const isAdmin = currentSession.role === 'admin';
+  const roles = isAdmin ? ['admin','bendahara'] : [currentSession.role];
+  return `
+  ${head('Utilitas','Pengaturan Akun','Ganti username dan kata sandi untuk login.')}
+  ${roles.map(r=>{
+    const acc = DB.auth[r];
+    return `<div class="card">
+      <h2>Akun ${r==='admin'?'Admin':'Bendahara'}</h2>
+      <div class="row">
+        <div class="field"><label>Username</label><input id="acc_${r}_username" value="${acc.username}"></div>
+        <div class="field"><label>Nama Tampilan</label><input id="acc_${r}_nama" value="${acc.nama}"></div>
+      </div>
+      <div class="field"><label>Kata Sandi Baru (kosongkan jika tidak diganti)</label><input type="password" id="acc_${r}_password" placeholder="••••••"></div>
+      <button class="btn gold" data-save-akun="${r}">Simpan Akun ${r==='admin'?'Admin':'Bendahara'}</button>
+    </div>`;
+  }).join('')}`;
+}
+
 /* ============ BACKUP ============ */
 function pageBackup(){
   return `
@@ -1178,6 +1267,19 @@ function attachPageEvents(){
     });
     downloadFile('bku_'+(DB.profil.tahunAnggaran||'')+'.csv', csv, 'text/csv');
   });
+
+  // Pengaturan Akun
+  document.querySelectorAll('[data-save-akun]').forEach(b=>b.addEventListener('click',()=>{
+    const r = b.dataset.saveAkun;
+    const username = document.getElementById(`acc_${r}_username`).value.trim();
+    const nama = document.getElementById(`acc_${r}_nama`).value.trim();
+    const pw = document.getElementById(`acc_${r}_password`).value;
+    if(!username){ toast('Username tidak boleh kosong.'); return; }
+    DB.auth[r].username = username;
+    DB.auth[r].nama = nama;
+    if(pw) DB.auth[r].password = pw;
+    saveDB(); toast('Akun berhasil diperbarui.'); render();
+  }));
 
   // Backup
   const btnExportJson = document.getElementById('btnExportJson');
