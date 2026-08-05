@@ -3,541 +3,1375 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aplikasi Pertanggungjawaban BOS 2026</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<title>SIPERBOS — Sistem Pertanggungjawaban Dana BOS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  /* ==== Tambahan untuk fitur Checklist SPJ Otomatis (digabung ke RKAS) ==== */
-  .status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:.72rem;font-weight:700;white-space:nowrap;}
-  .status-belum{background:#fef3e0;color:#b45309;}
-  .status-lengkap{background:#eafbef;color:#16a34a;}
-  .status-kosong{background:#f1f3f2;color:#8a9994;}
-  select.jenis-select-inline{width:100%;min-width:170px;padding:5px 6px;font-size:.78rem;border:1px solid var(--paper-line,#d7e6e2);border-radius:6px;font-family:inherit;}
-  .btn-ghost{background:#fff;color:#0f766e;border:1px solid var(--paper-line,#d7e6e2);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;}
-  .btn-ghost:hover{background:#e6f5f3;}
-  .btn-sm{padding:4px 9px;font-size:.72rem;}
-  .import-box{margin-top:14px;padding-top:14px;border-top:1px dashed var(--paper-line,#d7e6e2);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-  .import-box .hint{margin:0;max-width:520px;}
-  .modal-overlay{position:fixed;inset:0;background:rgba(20,30,28,.45);display:none;align-items:center;justify-content:center;z-index:999;padding:20px;}
-  .modal-box{background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:82vh;overflow:auto;padding:22px 24px;box-shadow:0 20px 60px -20px rgba(0,0,0,.35);}
-  .modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;}
-  .modal-head h3{margin:0;font-size:1.05rem;}
-  .modal-close{background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:#8a9994;}
-  .spj-checklist{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
-  .spj-checklist li{display:flex;align-items:flex-start;gap:9px;font-size:.88rem;padding:8px 10px;border-radius:8px;background:#f6faf9;}
-  .spj-checklist li.done label{text-decoration:line-through;color:#8a9994;}
-  .spj-checklist input[type=checkbox]{margin-top:2px;width:15px;height:15px;flex-shrink:0;}
+  @import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --navy:#173254;
+    --navy-deep:#0e2138;
+    --gold:#b8862f;
+    --gold-light:#e8c674;
+    --paper:#f6f4ef;
+    --paper-card:#ffffff;
+    --ink:#1f2937;
+    --ink-soft:#5b6472;
+    --line:#dfdbd0;
+    --green:#2f7a4b;
+    --red:#a83b2b;
+    --radius:6px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);}
+  h1,h2,h3,.serif{font-family:'Lora',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+
+  /* Layout */
+  #app{display:flex;min-height:100vh;}
+  #sidebar{
+    width:250px;flex-shrink:0;background:linear-gradient(180deg,var(--navy) 0%, var(--navy-deep) 100%);
+    color:#eef2f6;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  #sidebar .brand{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.12);}
+  #sidebar .brand .mark{font-family:'Lora',serif;font-weight:700;font-size:20px;letter-spacing:.3px;color:#fff;}
+  #sidebar .brand .sub{font-size:11px;color:var(--gold-light);letter-spacing:.08em;text-transform:uppercase;margin-top:3px;}
+  #sidebar nav{padding:10px 0;flex:1;}
+  .navgroup-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:#8ea3ba;padding:14px 20px 6px;}
+  .navbtn{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;
+    color:#d7e1ec;padding:9px 20px;font-size:13.5px;cursor:pointer;font-family:'Inter',sans-serif;border-left:3px solid transparent;
+  }
+  .navbtn:hover{background:rgba(255,255,255,.06);}
+  .navbtn.active{background:rgba(184,134,47,.16);border-left:3px solid var(--gold);color:#fff;font-weight:600;}
+  .navbtn .ic{width:16px;text-align:center;opacity:.85;}
+  #sidebar .foot{padding:14px 20px;font-size:10.5px;color:#7d90a6;border-top:1px solid rgba(255,255,255,.1);}
+
+  #main{flex:1;min-width:0;padding:28px 34px 60px;}
+  .pagehead{margin-bottom:22px;}
+  .pagehead .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);font-weight:600;}
+  .pagehead h1{font-size:26px;margin:4px 0 4px;color:var(--navy-deep);}
+  .pagehead p{margin:0;color:var(--ink-soft);font-size:13.5px;}
+
+  .card{background:var(--paper-card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;}
+  .card h2{font-size:16px;margin:0 0 14px;color:var(--navy-deep);}
+  .card h3{font-size:14px;margin:0 0 10px;color:var(--navy);}
+
+  .grid{display:grid;gap:16px;}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  @media (max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+  .stat{background:var(--paper-card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;border-top:3px solid var(--gold);}
+  .stat .lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .stat .val{font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;color:var(--navy-deep);margin-top:4px;}
+  .stat.pos{border-top-color:var(--green);}
+  .stat.neg{border-top-color:var(--red);}
+
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 4px;}
+  input,select,textarea{
+    width:100%;padding:8px 10px;border:1px solid #cfcabb;border-radius:4px;font-family:'Inter',sans-serif;
+    font-size:13.5px;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--gold-light);border-color:var(--gold);}
+  .field{margin-bottom:12px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row>*{flex:1;min-width:150px;}
+
+  button{cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn{
+    background:var(--navy);color:#fff;border:none;padding:9px 16px;border-radius:4px;font-size:13px;font-weight:600;
+  }
+  .btn:hover{background:var(--navy-deep);}
+  .btn.gold{background:var(--gold);}
+  .btn.gold:hover{background:#a37728;}
+  .btn.outline{background:none;border:1px solid var(--navy);color:var(--navy);}
+  .btn.outline:hover{background:#eef2f7;}
+  .btn.danger{background:none;border:1px solid var(--red);color:var(--red);padding:5px 10px;font-size:12px;}
+  .btn.danger:hover{background:#fbecea;}
+  .btn.sm{padding:5px 10px;font-size:12px;}
+
+  table{width:100%;border-collapse:collapse;font-size:12.8px;}
+  th{background:#eef1ee;color:var(--navy-deep);text-align:left;padding:8px 9px;font-size:11.3px;text-transform:uppercase;letter-spacing:.03em;border-bottom:2px solid var(--line);}
+  td{padding:7px 9px;border-bottom:1px solid #ece8dd;vertical-align:top;}
+  tr:hover td{background:#faf9f5;}
+  .num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.8px;font-weight:600;}
+  .tag.tunai{background:#e7f3ea;color:var(--green);}
+  .tag.bank{background:#e8eef7;color:var(--navy);}
+  .tag.masuk{background:#e7f3ea;color:var(--green);}
+  .tag.keluar{background:#fbeceb;color:var(--red);}
+
+  .empty{padding:30px;text-align:center;color:var(--ink-soft);font-size:13px;border:1px dashed var(--line);border-radius:var(--radius);}
+  .hint{font-size:11.8px;color:var(--ink-soft);margin-top:3px;}
+  .section-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line);}
+  .section-tabs button{background:none;border:none;padding:9px 14px;font-size:13px;color:var(--ink-soft);border-bottom:2px solid transparent;font-weight:600;}
+  .section-tabs button.active{color:var(--navy-deep);border-bottom:2px solid var(--gold);}
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--navy-deep);color:#fff;padding:11px 18px;border-radius:6px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:999;opacity:0;transform:translateY(10px);transition:.25s;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .letterhead{text-align:center;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:16px;}
+  .letterhead .sch{font-family:'Lora',serif;font-weight:700;font-size:16px;color:var(--navy-deep);}
+  .letterhead .addr{font-size:11.5px;color:var(--ink-soft);}
+  .modal-bg{position:fixed;inset:0;background:rgba(14,33,56,.55);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:200;}
+  .modal{background:#fff;border-radius:8px;padding:22px;max-width:560px;width:100%;}
+  .modal h3{margin-top:0;}
+  .closex{float:right;background:none;border:none;font-size:18px;color:var(--ink-soft);}
+  @media print{
+    #sidebar,.no-print{display:none!important;}
+    #main{padding:0;}
+    body{background:#fff;}
+    .card{border:none;box-shadow:none;}
+  }
 </style>
 </head>
 <body>
-
-<div class="app">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
+<div id="app">
+  <aside id="sidebar">
     <div class="brand">
-      <div class="brand-mark">BOS</div>
-      <div class="brand-text">
-        <strong>Pertanggungjawaban</strong>
-        <span>Dana BOS &middot; TA 2026</span>
-      </div>
+      <div class="mark">SIPERBOS</div>
+      <div class="sub">Pertanggungjawaban Dana BOS</div>
     </div>
-
-    <nav class="nav" id="nav">
-      <button class="nav-item active" data-page="dashboard"><span class="nav-num">01</span>Dasbor</button>
-      <button class="nav-item" data-page="profil"><span class="nav-num">02</span>Profil Sekolah</button>
-      <button class="nav-item" data-page="penerimaan"><span class="nav-num">03</span>Penerimaan Dana</button>
-      <button class="nav-item" data-page="bku"><span class="nav-num">04</span>Buku Kas Umum</button>
-      <button class="nav-item" data-page="rkas"><span class="nav-num">05</span>RKAS &amp; Kode Rekening</button>
-      <button class="nav-item" data-page="nota"><span class="nav-num">06</span>Nota Pesanan</button>
-      <button class="nav-item" data-page="kwitansi"><span class="nav-num">07</span>Kwitansi</button>
-      <button class="nav-item" data-page="laporan"><span class="nav-num">08</span>Laporan &amp; Cetak</button>
-      <button class="nav-item" data-page="backup"><span class="nav-num">09</span>Cadangkan Data</button>
-    </nav>
-
-    <div class="sidebar-foot">
-      <div class="stamp" title="Status data tersimpan lokal">
-        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><path id="stampCirclePath" d="M 50,50 m -34,0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none"/><text><textPath href="#stampCirclePath" startOffset="2%">TERSIMPAN &middot; PERANGKAT LOKAL &middot;</textPath></text><text x="50" y="55" text-anchor="middle" class="stamp-year">2026</text></svg>
-      </div>
-      <p>Data disimpan di penyimpanan lokal peramban (localStorage). Gunakan menu <em>Cadangkan Data</em> untuk mengekspor/mengimpor JSON.</p>
-    </div>
+    <nav id="navlist"></nav>
+    <div class="foot">Data tersimpan lokal di perangkat ini.<br>v2.0 · terinspirasi SmartSPJ</div>
   </aside>
-
-  <!-- MAIN -->
-  <main class="main">
-
-    <header class="topbar">
-      <div>
-        <h1 id="topbarSchool">Nama Sekolah Belum Diisi</h1>
-        <p id="topbarSub">NPSN — &middot; Tahun Anggaran 2026</p>
-      </div>
-      <div class="topbar-balance">
-        <span>Sisa Saldo Kas</span>
-        <strong id="topbarSaldo">Rp 0</strong>
-      </div>
-    </header>
-
-    <div class="pages">
-
-      <!-- DASHBOARD -->
-      <section class="page active" id="page-dashboard">
-        <div class="page-head">
-          <h2>Dasbor Ringkasan</h2>
-          <p class="eyebrow">Ikhtisar realisasi dana BOS tahun anggaran 2026</p>
-        </div>
-
-        <div class="cards">
-          <div class="card">
-            <span class="card-label">Total Diterima</span>
-            <strong id="cardTerima">Rp 0</strong>
-          </div>
-          <div class="card">
-            <span class="card-label">Total Direalisasikan</span>
-            <strong id="cardRealisasi">Rp 0</strong>
-          </div>
-          <div class="card">
-            <span class="card-label">Sisa Saldo</span>
-            <strong id="cardSaldo">Rp 0</strong>
-          </div>
-          <div class="card">
-            <span class="card-label">Persentase Serapan</span>
-            <strong id="cardPersen">0%</strong>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Realisasi per Komponen Kegiatan</h3>
-            <span class="eyebrow">Anggaran RKAS vs. realisasi BKU</span>
-          </div>
-          <div id="chartKomponen" class="chart-komponen"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Transaksi Terbaru</h3>
-            <span class="eyebrow">5 catatan terakhir pada Buku Kas Umum</span>
-          </div>
-          <table class="table" id="tableRecent">
-            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- PROFIL -->
-      <section class="page" id="page-profil">
-        <div class="page-head">
-          <h2>Profil Sekolah</h2>
-          <p class="eyebrow">Identitas satuan pendidikan penerima BOS</p>
-        </div>
-        <div class="panel form-panel">
-          <div class="form-grid">
-            <label>Nama Sekolah<input type="text" id="fNamaSekolah" placeholder="SD Negeri 1 Contoh"></label>
-            <label>NPSN<input type="text" id="fNpsn" placeholder="12345678"></label>
-            <label>Alamat<input type="text" id="fAlamat" placeholder="Jl. Pendidikan No. 1"></label>
-            <label>Kecamatan / Kabupaten<input type="text" id="fWilayah" placeholder="Kec. — / Kab. —"></label>
-            <label>Kepala Sekolah<input type="text" id="fKepsek" placeholder="Nama Kepala Sekolah"></label>
-            <label>NIP Kepala Sekolah<input type="text" id="fKepsekNip" placeholder="—"></label>
-            <label>Bendahara BOS<input type="text" id="fBendahara" placeholder="Nama Bendahara"></label>
-            <label>NIP Bendahara<input type="text" id="fBendaharaNip" placeholder="—"></label>
-            <label>Tahun Anggaran<input type="number" id="fTahun" value="2026"></label>
-          </div>
-          <div class="form-actions"><button class="btn btn-primary" id="btnSimpanProfil">Simpan Profil</button></div>
-        </div>
-      </section>
-
-      <!-- PENERIMAAN -->
-      <section class="page" id="page-penerimaan">
-        <div class="page-head">
-          <h2>Penerimaan Dana BOS</h2>
-          <p class="eyebrow">Catatan penyaluran dana per tahap</p>
-        </div>
-
-        <div class="panel form-panel">
-          <div class="form-grid">
-            <label>Tanggal<input type="date" id="pTanggal"></label>
-            <label>Tahap Penyaluran
-              <select id="pTahap">
-                <option>Tahap 1</option><option>Tahap 2</option><option>Tahap 3</option><option>Lainnya</option>
-              </select>
-            </label>
-            <label>Nomor SP2D / Referensi<input type="text" id="pRef" placeholder="—"></label>
-            <label>Jumlah (Rp)<input type="number" id="pJumlah" placeholder="0"></label>
-            <label class="span2">Keterangan<input type="text" id="pKet" placeholder="Opsional"></label>
-          </div>
-          <div class="form-actions"><button class="btn btn-primary" id="btnTambahPenerimaan">Tambah Penerimaan</button></div>
-        </div>
-
-        <div class="panel">
-          <table class="table" id="tablePenerimaan">
-            <thead><tr><th>Tanggal</th><th>Tahap</th><th>No. Referensi</th><th>Keterangan</th><th class="num">Jumlah</th><th></th></tr></thead>
-            <tbody></tbody>
-            <tfoot><tr><td colspan="4">Total Penerimaan</td><td class="num" id="totalPenerimaan">Rp 0</td><td></td></tr></tfoot>
-          </table>
-        </div>
-      </section>
-
-      <!-- BKU -->
-      <section class="page" id="page-bku">
-        <div class="page-head">
-          <h2>Buku Kas Umum (BKU)</h2>
-          <p class="eyebrow">Seluruh transaksi penerimaan dan pengeluaran kas</p>
-        </div>
-
-        <div class="panel form-panel">
-          <div class="form-grid">
-            <label>Tanggal<input type="date" id="bTanggal"></label>
-            <label>No. Bukti<input type="text" id="bNoBukti" placeholder="001/BOS/2026"></label>
-            <label class="span2">Uraian<input type="text" id="bUraian" placeholder="Uraian transaksi"></label>
-            <label>Jenis
-              <select id="bJenis"><option value="pengeluaran">Pengeluaran</option><option value="penerimaan">Penerimaan Lain</option></select>
-            </label>
-            <label>Komponen Kegiatan<select id="bKomponen"></select></label>
-            <label>Jumlah (Rp)<input type="number" id="bJumlah" placeholder="0"></label>
-            <label class="span2">Penerima / Dibayarkan Kepada<input type="text" id="bPenerima" placeholder="Nama toko / penyedia / penerima honor"></label>
-          </div>
-          <div class="form-actions"><button class="btn btn-primary" id="btnTambahBku">Tambah ke BKU</button></div>
-        </div>
-
-        <div class="panel table-wrap">
-          <table class="table" id="tableBku">
-            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Penerima</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- RKAS -->
-      <section class="page" id="page-rkas">
-        <div class="page-head">
-          <h2>RKAS &amp; Kode Rekening</h2>
-          <p class="eyebrow">Rencana Kegiatan dan Anggaran Sekolah — mengikuti format Kode Rekening / Program Kegiatan SNP ARKAS</p>
-        </div>
-
-        <div class="panel form-panel">
-          <p class="hint">Isi <strong>Kode Rekening</strong> dan <strong>Program Kegiatan SNP</strong> sesuai kertas kerja ARKAS sekolah Anda (kode berbeda tiap jenjang/tahun, mohon disesuaikan sendiri agar akurat). Jumlah anggaran dihitung otomatis dari Volume × Harga Satuan. Rencana pencairan per triwulan bersifat opsional (total idealnya 100%).</p>
-          <div class="form-grid">
-            <label>Kode Rekening<input type="text" id="rKode" placeholder="Cth: 02.02.01"></label>
-            <label class="span2">Nama Referensi<input type="text" id="rReferensi" placeholder="Cth: Belanja Buku Koleksi Perpustakaan"></label>
-            <label class="span3">Program Kegiatan SNP<input type="text" id="rProgram" placeholder="Cth: Pengembangan Perpustakaan"></label>
-            <label class="span3">Uraian<input type="text" id="rUraian" placeholder="Cth: Belanja buku bacaan untuk perpustakaan"></label>
-            <label>Volume<input type="number" id="rVol" placeholder="0" step="any"></label>
-            <label>Satuan<input type="text" id="rSatuan" placeholder="Cth: paket, org, bulan"></label>
-            <label>Harga Satuan (Rp)<input type="number" id="rHarga" placeholder="0"></label>
-            <label class="span3">Jenis Kegiatan (untuk Checklist SPJ)<select id="rJenis"></select></label>
-          </div>
-          <div class="form-grid" style="margin-top:14px;border-top:1px dashed var(--paper-line);padding-top:14px;">
-            <label>Tahap I &middot; Triwulan 1 (%)<input type="number" id="rTw1" placeholder="0" step="any"></label>
-            <label>Tahap I &middot; Triwulan 2 (%)<input type="number" id="rTw2" placeholder="0" step="any"></label>
-            <label>Tahap II &middot; Triwulan 3 (%)<input type="number" id="rTw3" placeholder="0" step="any"></label>
-            <label>Tahap II &middot; Triwulan 4 (%)<input type="number" id="rTw4" placeholder="0" step="any"></label>
-          </div>
-          <div class="form-actions"><button class="btn btn-primary" id="btnTambahKomponen">Tambah Baris RKAS</button></div>
-
-          <div class="import-box">
-            <p class="hint">Sudah pernah mengisi RKAS di prototipe <em>Checklist SPJ Otomatis</em>? Impor sekali ke sini supaya tidak perlu mengetik ulang.</p>
-            <button class="btn btn-secondary" id="btnImportChecklistSpj">Impor dari Checklist SPJ (sekali jalan)</button>
-          </div>
-        </div>
-
-        <div class="panel table-wrap">
-          <table class="table" id="tableRkas">
-            <thead>
-              <tr>
-                <th rowspan="2">No.<br>Urut</th>
-                <th rowspan="2">Kode<br>Rekening</th>
-                <th rowspan="2">Nama Referensi</th>
-                <th rowspan="2">Program Kegiatan SNP</th>
-                <th rowspan="2">Uraian</th>
-                <th colspan="3">Rincian Perhitungan</th>
-                <th rowspan="2" class="num">Jumlah</th>
-                <th colspan="2">Tahap I</th>
-                <th colspan="2">Tahap II</th>
-                <th rowspan="2" class="num">Realisasi</th>
-                <th rowspan="2" class="num">Sisa</th>
-                <th rowspan="2">Jenis Kegiatan</th>
-                <th rowspan="2">Checklist SPJ</th>
-                <th rowspan="2"></th>
-              </tr>
-              <tr>
-                <th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th>
-                <th class="num">TW 1</th><th class="num">TW 2</th>
-                <th class="num">TW 3</th><th class="num">TW 4</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-            <tfoot><tr>
-              <td colspan="8">Total</td>
-              <td class="num" id="totalAnggaran">Rp 0</td>
-              <td colspan="4"></td>
-              <td class="num" id="totalRealisasiRkas">Rp 0</td>
-              <td class="num" id="totalSisaRkas">Rp 0</td>
-              <td colspan="3"></td>
-            </tr></tfoot>
-          </table>
-        </div>
-      </section>
-
-      <!-- NOTA PESANAN -->
-      <section class="page" id="page-nota">
-        <div class="page-head no-print">
-          <h2>Nota Pesanan Barang/Jasa</h2>
-          <p class="eyebrow">Dibuat berdasarkan baris RKAS &amp; Kode Rekening yang dipilih</p>
-        </div>
-
-        <div class="panel form-panel no-print">
-          <div class="form-grid">
-            <label class="span3">Referensi RKAS (Kode Rekening)<select id="nRkasRef"></select></label>
-            <label>No. Nota<input type="text" id="nNoNota" placeholder="001/BOS/2026"></label>
-            <label>Tanggal<input type="date" id="nTanggal"></label>
-            <label>Nama Penyedia / Toko<input type="text" id="nPenyedia" placeholder="Toko Sumber Ilmu"></label>
-            <label class="span3">Alamat Penyedia<input type="text" id="nAlamat" placeholder="Opsional"></label>
-          </div>
-
-          <div class="form-grid" style="margin-top:14px;border-top:1px dashed var(--paper-line);padding-top:14px;">
-            <label class="span2">Nama Barang / Jasa<input type="text" id="niNama" placeholder="Cth: Buku cerita anak"></label>
-            <label>Volume<input type="number" id="niVol" placeholder="0" step="any"></label>
-            <label>Satuan<input type="text" id="niSatuan" placeholder="eks / unit / paket"></label>
-            <label>Harga Satuan (Rp)<input type="number" id="niHarga" placeholder="0"></label>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-secondary" id="btnTambahItemNota">+ Tambah Item ke Daftar</button>
-          </div>
-
-          <table class="table" id="tableNotaDraft" style="margin-top:12px;">
-            <thead><tr><th>Nama Barang/Jasa</th><th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th></th></tr></thead>
-            <tbody></tbody>
-            <tfoot><tr><td colspan="4">Total Nota</td><td class="num" id="totalNotaDraft">Rp 0</td><td></td></tr></tfoot>
-          </table>
-
-          <div class="form-actions"><button class="btn btn-primary" id="btnSimpanNota">Simpan Nota Pesanan</button></div>
-        </div>
-
-        <div class="panel no-print table-wrap">
-          <div class="panel-head"><h3>Daftar Nota Pesanan Tersimpan</h3></div>
-          <table class="table" id="tableNotaList">
-            <thead><tr><th>No. Nota</th><th>Tanggal</th><th>Penyedia</th><th>Kode Rek. Referensi</th><th class="num">Total</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="form-actions no-print"><button class="btn btn-secondary" id="btnCetakNota">Cetak Nota Terpilih</button></div>
-
-        <div class="report" id="notaDoc">
-          <div class="report-head">
-            <h2>NOTA PESANAN BARANG / JASA</h2>
-            <p id="notaSchoolLine">Nama Sekolah — NPSN —</p>
-          </div>
-          <div class="report-summary" style="grid-template-columns:repeat(2,1fr);">
-            <div><span>No. Nota</span><strong id="notaNoView">—</strong></div>
-            <div><span>Tanggal</span><strong id="notaTglView">—</strong></div>
-          </div>
-          <div class="report-summary" style="grid-template-columns:repeat(2,1fr);margin-top:0;">
-            <div><span>Penyedia / Toko</span><strong id="notaPenyediaView">—</strong></div>
-            <div><span>Referensi Kode Rekening</span><strong id="notaKodeView">—</strong></div>
-          </div>
-
-          <h3>Rincian Pesanan</h3>
-          <table class="table" id="notaItemsView">
-            <thead><tr><th>No</th><th>Nama Barang/Jasa</th><th class="num">Vol.</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th></tr></thead>
-            <tbody></tbody>
-            <tfoot><tr><td colspan="5">Total Pesanan</td><td class="num" id="notaTotalView">Rp 0</td></tr></tfoot>
-          </table>
-
-          <div class="report-sign">
-            <div>
-              <p>Penyedia Barang/Jasa</p>
-              <div class="sign-space"></div>
-              <strong id="notaSignPenyedia">(______________________)</strong>
-            </div>
-            <div>
-              <p>Mengetahui,<br>Bendahara BOS</p>
-              <div class="sign-space"></div>
-              <strong id="notaSignBendahara">(______________________)</strong>
-              <span id="notaSignBendaharaNip"></span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- KWITANSI -->
-      <section class="page" id="page-kwitansi">
-        <div class="page-head no-print">
-          <h2>Kwitansi Pembayaran</h2>
-          <p class="eyebrow">Bukti pembayaran kepada penyedia — dapat dibuat otomatis dari Nota Pesanan</p>
-        </div>
-
-        <div class="panel form-panel no-print">
-          <div class="form-grid">
-            <label class="span3">Isi Otomatis dari Nota Pesanan (opsional)
-              <select id="kNotaRef"><option value="">— Isi manual —</option></select>
-            </label>
-            <label>No. Kwitansi<input type="text" id="kNoKwitansi" placeholder="001/KWT/2026"></label>
-            <label>Tanggal<input type="date" id="kTanggal"></label>
-            <label>Kode Rek. Referensi<select id="kRkasRef"></select></label>
-            <label class="span3">Sudah Terima Dari<input type="text" id="kDari" placeholder="Bendahara BOS"></label>
-            <label class="span2">Yang Menerima Uang (Penyedia/Toko/Nama)<input type="text" id="kKepada" placeholder="Toko Sumber Ilmu"></label>
-            <label>Jumlah (Rp)<input type="number" id="kJumlah" placeholder="0"></label>
-            <label class="span3">Untuk Pembayaran<input type="text" id="kUntuk" placeholder="Cth: Pembelian buku bacaan perpustakaan sesuai Nota Pesanan No. 001/BOS/2026"></label>
-          </div>
-          <p class="hint" id="kTerbilangPreview" style="margin-top:10px;">Terbilang: —</p>
-          <div class="form-actions"><button class="btn btn-primary" id="btnSimpanKwitansi">Simpan Kwitansi</button></div>
-        </div>
-
-        <div class="panel no-print table-wrap">
-          <div class="panel-head"><h3>Daftar Kwitansi Tersimpan</h3></div>
-          <table class="table" id="tableKwitansiList">
-            <thead><tr><th>No. Kwitansi</th><th>Tanggal</th><th>Yang Menerima</th><th class="num">Jumlah</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-        <div class="form-actions no-print"><button class="btn btn-secondary" id="btnCetakKwitansi">Cetak Kwitansi Terpilih</button></div>
-
-        <div class="report" id="kwitansiDoc">
-          <div class="report-head">
-            <h2>KWITANSI</h2>
-            <p id="kwitansiSchoolLine">Nama Sekolah — NPSN —</p>
-          </div>
-          <div class="report-summary" style="grid-template-columns:repeat(2,1fr);">
-            <div><span>No. Kwitansi</span><strong id="kwitansiNoView">—</strong></div>
-            <div><span>Tanggal</span><strong id="kwitansiTglView">—</strong></div>
-          </div>
-
-          <table class="table kwitansi-field-table">
-            <tbody>
-              <tr><td class="kf-label">Sudah terima dari</td><td class="kf-sep">:</td><td id="kwitansiDariView">—</td></tr>
-              <tr><td class="kf-label">Banyaknya uang</td><td class="kf-sep">:</td><td id="kwitansiJumlahView">Rp 0</td></tr>
-              <tr><td class="kf-label">Terbilang</td><td class="kf-sep">:</td><td id="kwitansiTerbilangView" style="font-style:italic;">— rupiah</td></tr>
-              <tr><td class="kf-label">Untuk pembayaran</td><td class="kf-sep">:</td><td id="kwitansiUntukView">—</td></tr>
-              <tr><td class="kf-label">Kode rekening</td><td class="kf-sep">:</td><td id="kwitansiKodeView">—</td></tr>
-            </tbody>
-          </table>
-
-          <div class="report-sign">
-            <div>
-              <p>Yang Menerima,</p>
-              <div class="sign-space"></div>
-              <strong id="kwitansiSignKepada">(______________________)</strong>
-            </div>
-            <div>
-              <p>Lunas Dibayar,<br>Bendahara BOS</p>
-              <div class="sign-space"></div>
-              <strong id="kwitansiSignBendahara">(______________________)</strong>
-              <span id="kwitansiSignBendaharaNip"></span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- LAPORAN -->
-      <section class="page" id="page-laporan">
-        <div class="page-head no-print">
-          <h2>Laporan &amp; Cetak</h2>
-          <p class="eyebrow">Rekapitulasi per triwulan untuk dicetak / diarsipkan</p>
-        </div>
-
-        <div class="panel no-print">
-          <div class="form-grid" style="grid-template-columns: repeat(2,1fr);">
-            <label>Pilih Triwulan
-              <select id="lwTriwulan">
-                <option value="1">Triwulan I (Jan–Mar)</option>
-                <option value="2">Triwulan II (Apr–Jun)</option>
-                <option value="3">Triwulan III (Jul–Sep)</option>
-                <option value="4">Triwulan IV (Okt–Des)</option>
-                <option value="all">Seluruh Tahun</option>
-              </select>
-            </label>
-            <div class="form-actions" style="align-self:end;">
-              <button class="btn btn-secondary" id="btnCsv">Unduh CSV</button>
-              <button class="btn btn-primary" id="btnCetak">Cetak Laporan</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="report" id="reportArea">
-          <div class="report-head">
-            <div class="stamp stamp-report">
-              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><path id="stampCirclePath2" d="M 50,50 m -34,0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none"/><text><textPath href="#stampCirclePath2" startOffset="2%">LAPORAN PERTANGGUNGJAWABAN &middot;</textPath></text><text x="50" y="55" text-anchor="middle" class="stamp-year">BOS</text></svg>
-            </div>
-            <h2>LAPORAN PERTANGGUNGJAWABAN DANA BOS</h2>
-            <p id="reportSchoolLine">Nama Sekolah — NPSN —</p>
-            <p id="reportPeriodLine">Periode: Tahun Anggaran 2026</p>
-          </div>
-
-          <div class="report-summary">
-            <div><span>Total Penerimaan</span><strong id="repTerima">Rp 0</strong></div>
-            <div><span>Total Pengeluaran</span><strong id="repKeluar">Rp 0</strong></div>
-            <div><span>Sisa Saldo Akhir</span><strong id="repSaldo">Rp 0</strong></div>
-          </div>
-
-          <h3>Rekap Realisasi per Komponen</h3>
-          <table class="table" id="reportRkasTable">
-            <thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
-            <tbody></tbody>
-          </table>
-
-          <h3>Rincian Buku Kas Umum</h3>
-          <table class="table" id="reportBkuTable">
-            <thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th>Komponen</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th></tr></thead>
-            <tbody></tbody>
-          </table>
-
-          <div class="report-sign">
-            <div>
-              <p>Mengetahui,<br>Kepala Sekolah</p>
-              <div class="sign-space"></div>
-              <strong id="signKepsek">(______________________)</strong>
-              <span id="signKepsekNip"></span>
-            </div>
-            <div>
-              <p>Dibuat oleh,<br>Bendahara BOS</p>
-              <div class="sign-space"></div>
-              <strong id="signBendahara">(______________________)</strong>
-              <span id="signBendaharaNip"></span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- BACKUP -->
-      <section class="page" id="page-backup">
-        <div class="page-head">
-          <h2>Cadangkan &amp; Pulihkan Data</h2>
-          <p class="eyebrow">Ekspor seluruh data ke berkas JSON, atau pulihkan dari cadangan</p>
-        </div>
-        <div class="panel form-panel">
-          <p class="hint">Karena data hanya tersimpan di peramban perangkat ini, unduh cadangan secara berkala — terutama sebelum mengganti perangkat atau membersihkan data peramban.</p>
-          <div class="form-actions">
-            <button class="btn btn-primary" id="btnExportJson">Unduh Cadangan (.json)</button>
-            <label class="btn btn-secondary file-btn">Pulihkan dari Berkas
-              <input type="file" id="fileImportJson" accept="application/json" hidden>
-            </label>
-            <button class="btn btn-danger" id="btnResetData">Hapus Semua Data</button>
-          </div>
-        </div>
-      </section>
-
-    </div>
-  </main>
+  <main id="main"></main>
 </div>
+<div id="toast" class="toast"></div>
 
-<!-- MODAL CHECKLIST SPJ -->
-<div class="modal-overlay" id="spjModalOverlay">
-  <div class="modal-box">
-    <div class="modal-head">
-      <h3 id="spjModalTitle">Checklist SPJ</h3>
-      <button class="modal-close" id="spjModalClose" type="button">&times;</button>
-    </div>
-    <p class="hint" id="spjModalSub"></p>
-    <ul class="spj-checklist" id="spjModalList"></ul>
+<script>
+/* ============ DATA LAYER (localStorage) ============ */
+const DB_KEY = 'siperbos_v2';
+const defaultDB = {
+  profil:{ namaSekolah:'SD NEGERI 4 MEREMBU', npsn:'', alamat:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
+  penerimaan: [],
+  rkas: [],
+  transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto}
+  kwitansi: [],
+  notaPesanan: [],
+  sppd: [],
+  suratTugas: [],
+  checklistSpj: [],
+  rekonsiliasi: []
+};
+function loadDB(){
+  try{ const raw = localStorage.getItem(DB_KEY); if(!raw) return structuredClone(defaultDB); const d = JSON.parse(raw); return {...structuredClone(defaultDB), ...d}; }
+  catch(e){ return structuredClone(defaultDB); }
+}
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+let DB = loadDB();
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function fmtRp(n){ n = Number(n)||0; return 'Rp ' + n.toLocaleString('id-ID'); }
+function fmtDate(d){ if(!d) return '-'; const dt = new Date(d); return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* Preset jenis kegiatan -> jenis pajak & persentase (acuan umum, bisa disesuaikan) */
+const PAJAK_PRESET = {
+  'Honorarium (Non-PNS)':      {jenis:'PPh 21 Final', persen:5},
+  'Honorarium (PNS Gol III/IV)':{jenis:'PPh 21 Final', persen:5},
+  'Belanja Barang/Jasa (Rekanan PKP)': {jenis:'PPN', persen:11},
+  'Belanja Barang (Non PKP < 2jt)': {jenis:'Tidak dipungut', persen:0},
+  'Jasa Tukang/Perorangan':    {jenis:'PPh 21 Final', persen:2.5},
+  'Jasa Pelatih Ekstrakurikuler': {jenis:'PPh 21 Final', persen:5},
+  'Sewa (PPh 4 ayat 2)':       {jenis:'PPh Final Sewa', persen:10},
+  'Belanja Jasa Badan (PPh 23)': {jenis:'PPh 23', persen:2},
+  'Langganan Daya & Jasa':     {jenis:'Tidak dipungut', persen:0},
+  'Perjalanan Dinas':          {jenis:'Tidak dipungut', persen:0},
+  'Lainnya (manual)':          {jenis:'Manual', persen:0}
+};
+
+/* ============ NAV ============ */
+const NAV = [
+  {group:'Ringkasan', items:[
+    {id:'dasbor', label:'Dasbor', ic:'◆'}
+  ]},
+  {group:'Data Dasar', items:[
+    {id:'profil', label:'Profil Sekolah', ic:'▤'},
+    {id:'penerimaan', label:'Penerimaan Dana', ic:'⬇'},
+    {id:'rkas', label:'RKAS & Kode Rekening', ic:'▦'}
+  ]},
+  {group:'Penatausahaan', items:[
+    {id:'bku', label:'Buku Kas Umum', ic:'✎'},
+    {id:'pembantu', label:'Buku Pembantu', ic:'▥'},
+    {id:'dokumen', label:'Kwitansi, Nota & Surat', ic:'▧'}
+  ]},
+  {group:'Pelaporan', items:[
+    {id:'checklist', label:'Checklist SPJ', ic:'☑'},
+    {id:'laporan', label:'Laporan & Cetak', ic:'▣'}
+  ]},
+  {group:'Utilitas', items:[
+    {id:'backup', label:'Cadangkan Data', ic:'⟳'}
+  ]}
+];
+let currentPage = 'dasbor';
+
+function renderNav(){
+  const nav = document.getElementById('navlist');
+  nav.innerHTML = NAV.map(g=>`
+    <div class="navgroup-label">${g.group}</div>
+    ${g.items.map(it=>`<button class="navbtn ${currentPage===it.id?'active':''}" data-page="${it.id}"><span class="ic">${it.ic}</span>${it.label}</button>`).join('')}
+  `).join('');
+  nav.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',()=>{ currentPage=b.dataset.page; render(); }));
+}
+
+/* ============ RENDER ROUTER ============ */
+function render(){
+  renderNav();
+  const main = document.getElementById('main');
+  const pages = { dasbor:pageDasbor, profil:pageProfil, penerimaan:pagePenerimaan, rkas:pageRkas, bku:pageBKU, pembantu:pagePembantu, dokumen:pageDokumen, checklist:pageChecklist, laporan:pageLaporan, backup:pageBackup };
+  main.innerHTML = pages[currentPage] ? pages[currentPage]() : '<div class="empty">Halaman tidak ditemukan</div>';
+  attachPageEvents();
+}
+
+function head(eyebrow,title,desc){
+  return `<div class="pagehead"><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${desc}</p></div>`;
+}
+
+/* ============ DASBOR ============ */
+function pageDasbor(){
+  const totalPenerimaan = DB.penerimaan.reduce((s,p)=>s+Number(p.jumlah||0),0);
+  const totalMasuk = DB.transaksi.filter(t=>t.tipe==='masuk').reduce((s,t)=>s+Number(t.jumlahNetto||0),0);
+  const totalKeluar = DB.transaksi.filter(t=>t.tipe==='keluar').reduce((s,t)=>s+Number(t.jumlahNetto||0),0);
+  const saldoTunai = DB.transaksi.filter(t=>t.jenisPembayaran==='tunai').reduce((s,t)=> s + (t.tipe==='masuk'?Number(t.jumlahNetto||0):-Number(t.jumlahNetto||0)),0);
+  const saldoBank = DB.transaksi.filter(t=>t.jenisPembayaran==='bank').reduce((s,t)=> s + (t.tipe==='masuk'?Number(t.jumlahNetto||0):-Number(t.jumlahNetto||0)),0);
+  const totalPajak = DB.transaksi.reduce((s,t)=> s + Number(t.pajak?.nominal||0),0);
+  const totalRKAS = DB.rkas.reduce((s,r)=>s+Number(r.jumlah||0),0);
+
+  const recent = [...DB.transaksi].sort((a,b)=> new Date(b.tanggal)-new Date(a.tanggal)).slice(0,6);
+
+  return `
+  ${head('SDN 4 Merembujaya','Dasbor','Ringkasan keuangan dana BOS tahun anggaran '+ (DB.profil.tahunAnggaran||'-'))}
+  <div class="grid grid-4">
+    <div class="stat pos"><div class="lbl">Total Penerimaan Dana</div><div class="val">${fmtRp(totalPenerimaan)}</div></div>
+    <div class="stat"><div class="lbl">Total Belanja RKAS</div><div class="val">${fmtRp(totalRKAS)}</div></div>
+    <div class="stat neg"><div class="lbl">Total Pengeluaran BKU</div><div class="val">${fmtRp(totalKeluar)}</div></div>
+    <div class="stat"><div class="lbl">Pajak Terpotong</div><div class="val">${fmtRp(totalPajak)}</div></div>
   </div>
-</div>
+  <div class="grid grid-2" style="margin-top:4px;">
+    <div class="stat"><div class="lbl">Saldo Kas Tunai</div><div class="val">${fmtRp(saldoTunai)}</div></div>
+    <div class="stat"><div class="lbl">Saldo Kas Bank</div><div class="val">${fmtRp(saldoBank)}</div></div>
+  </div>
+  <div class="card" style="margin-top:18px;">
+    <h2>Transaksi Terbaru</h2>
+    ${recent.length===0?'<div class="empty">Belum ada transaksi BKU. Mulai input di menu Buku Kas Umum.</div>':`
+    <table><thead><tr><th>Tanggal</th><th>Uraian</th><th>Jenis</th><th>Metode</th><th class="num">Netto</th></tr></thead>
+    <tbody>${recent.map(t=>`<tr><td>${fmtDate(t.tanggal)}</td><td>${t.uraian}</td><td><span class="tag ${t.tipe==='masuk'?'masuk':'keluar'}">${t.tipe==='masuk'?'Masuk':'Keluar'}</span></td><td><span class="tag ${t.jenisPembayaran}">${t.jenisPembayaran==='tunai'?'Tunai':'Bank'}</span></td><td class="num">${fmtRp(t.jumlahNetto)}</td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
 
-<div class="toast" id="toast"></div>
+/* ============ PROFIL ============ */
+function pageProfil(){
+  const p = DB.profil;
+  return `
+  ${head('Data Dasar','Profil Sekolah','Data ini digunakan sebagai kop surat pada dokumen laporan dan kwitansi.')}
+  <div class="card">
+  <div class="grid grid-2">
+      <div class="field"><label>Nama Pemerintah Kabupaten/Kota (baris 1 kop)</label><input id="f_pemerintahKab" value="${p.pemerintahKab||''}"></div>
+      <div class="field"><label>Nama Dinas (baris 2 kop)</label><input id="f_dinas" value="${p.dinas||''}"></div>
+      <div class="field"><label>Nama Sekolah</label><input id="f_namaSekolah" value="${p.namaSekolah}"></div>
+      <div class="field"><label>NPSN</label><input id="f_npsn" value="${p.npsn}"></div>
+      <div class="field"><label>Alamat</label><input id="f_alamat" value="${p.alamat}"></div>
+      <div class="field"><label>Kecamatan</label><input id="f_kecamatan" value="${p.kecamatan}"></div>
+      <div class="field"><label>Kabupaten/Kota</label><input id="f_kabupaten" value="${p.kabupaten}"></div>
+      <div class="field"><label>Kode Pos</label><input id="f_kodePos" value="${p.kodePos||''}"></div>
+      <div class="field"><label>Tahun Anggaran</label><input id="f_tahunAnggaran" value="${p.tahunAnggaran}"></div>
+      <div class="field"><label>Nama Kepala Sekolah</label><input id="f_kepsek" value="${p.kepsek}"></div>
+      <div class="field"><label>NIP Kepala Sekolah</label><input id="f_nipKepsek" value="${p.nipKepsek}"></div>
+      <div class="field"><label>Nama Bendahara BOS</label><input id="f_bendahara" value="${p.bendahara}"></div>
+      <div class="field"><label>NIP Bendahara</label><input id="f_nipBendahara" value="${p.nipBendahara}"></div>
+    </div>
+    <button class="btn gold" id="btnSaveProfil">Simpan Profil</button>
+  </div>`;
+}
 
-<script src="js/app.js"></script>
+/* ============ PENERIMAAN ============ */
+function pagePenerimaan(){
+  const rows = DB.penerimaan;
+  return `
+  ${head('Data Dasar','Penerimaan Dana','Catat setiap pencairan dana BOS per tahap/triwulan.')}
+  <div class="card">
+    <h2>Tambah Penerimaan</h2>
+    <div class="row">
+      <div class="field"><label>Tanggal</label><input type="date" id="p_tanggal"></div>
+      <div class="field"><label>Sumber Dana</label>
+        <select id="p_sumber"><option>BOS Reguler</option><option>BOS Kinerja</option><option>BOP Kesetaraan</option><option>Sumber Lain</option></select>
+      </div>
+      <div class="field"><label>Tahap/Triwulan</label>
+        <select id="p_tahap"><option>Tahap I</option><option>Tahap II</option><option>Tahap III</option><option>Triwulan I</option><option>Triwulan II</option><option>Triwulan III</option><option>Triwulan IV</option></select>
+      </div>
+      <div class="field"><label>Jumlah (Rp)</label><input type="number" id="p_jumlah" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Keterangan</label><input id="p_ket" placeholder="mis. transfer dari rekening kas daerah"></div>
+    <button class="btn gold" id="btnAddPenerimaan">Simpan Penerimaan</button>
+  </div>
+  <div class="card">
+    <h2>Riwayat Penerimaan</h2>
+    ${rows.length===0?'<div class="empty">Belum ada data penerimaan.</div>':`
+    <table><thead><tr><th>Tanggal</th><th>Sumber Dana</th><th>Tahap</th><th>Keterangan</th><th class="num">Jumlah</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${fmtDate(r.tanggal)}</td><td>${r.sumber}</td><td>${r.tahap}</td><td>${r.ket||'-'}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="no-print"><button class="btn danger" data-del-penerimaan="${r.id}">Hapus</button></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="4"><b>Total</b></td><td class="num"><b>${fmtRp(rows.reduce((s,r)=>s+Number(r.jumlah||0),0))}</b></td><td></td></tr></tfoot></table>`}
+  </div>`;
+}
+
+/* ============ RKAS ============ */
+function pageRkas(){
+  const rows = DB.rkas;
+  return `
+  ${head('Data Dasar','RKAS & Kode Rekening','Rencana Kegiatan dan Anggaran Sekolah — acuan untuk pos belanja di BKU.')}
+  <div class="card no-print">
+    <h2>Impor dari File RPD/RKAS Lama (Excel/CSV)</h2>
+    <p class="hint">Mendukung format dengan kolom Tahap I/II (Triwulan 1–4) maupun format ringkas tanpa tahap. Baris yang punya persentase Triwulan akan otomatis dipecah per triwulan.</p>
+    <input type="file" id="fileImportRkas" accept=".xlsx,.xls,.csv">
+    <br><br>
+    <button class="btn outline" id="btnImportRkas">Impor File RPD/RKAS</button>
+    <div id="importRkasStatus" class="hint"></div>
+  </div>
+  <div class="card">
+    <h2>Tambah Rincian RKAS</h2>
+    <div class="row">
+      <div class="field"><label>Kode Rekening</label><input id="r_kode" placeholder="mis. 5.1.02.01"></div>
+      <div class="field"><label>Uraian Kegiatan</label><input id="r_uraian" placeholder="mis. Pembelian ATK"></div>
+      <div class="field"><label>Sumber Dana</label>
+        <select id="r_sumber"><option>BOS Reguler</option><option>BOS Kinerja</option><option>BOP Kesetaraan</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Volume</label><input type="number" id="r_volume" value="1"></div>
+      <div class="field"><label>Satuan</label><input id="r_satuan" placeholder="paket/bulan/orang"></div>
+      <div class="field"><label>Harga Satuan (Rp)</label><input type="number" id="r_harga" placeholder="0"></div>
+      <div class="field"><label>Triwulan</label>
+        <select id="r_triwulan"><option>I</option><option>II</option><option>III</option><option>IV</option></select>
+      </div>
+    </div>
+    <button class="btn gold" id="btnAddRkas">Simpan RKAS</button>
+  </div>
+  <div class="card">
+    <h2>Daftar RKAS</h2>
+    ${rows.length===0?'<div class="empty">Belum ada rincian RKAS.</div>':`
+    <table><thead><tr><th>Kode</th><th>Uraian</th><th>Sumber Dana</th><th class="num">Vol</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th><th>Triwulan</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td class="mono">${r.kode}</td><td>${r.uraian}</td><td>${r.sumber}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td>${r.triwulan}</td><td class="no-print"><button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="6"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(rows.reduce((s,r)=>s+Number(r.jumlah||0),0))}</b></td><td colspan="2"></td></tr></tfoot></table>`}
+  </div>`;
+}
+
+/* ============ BKU ============ */
+function pageBKU(){
+  const rows = [...DB.transaksi].sort((a,b)=> new Date(a.tanggal)-new Date(b.tanggal));
+  let saldo = 0;
+  const rowsHtml = rows.map(t=>{
+    saldo += (t.tipe==='masuk'? Number(t.jumlahNetto||0) : -Number(t.jumlahNetto||0));
+    return `<tr>
+      <td>${fmtDate(t.tanggal)}</td><td class="mono">${t.noBukti||'-'}</td><td>${t.uraian}</td><td class="mono">${t.kodeRekening||'-'}</td>
+      <td><span class="tag ${t.jenisPembayaran}">${t.jenisPembayaran==='tunai'?'Tunai':'Bank'}</span></td>
+      <td class="num">${t.tipe==='masuk'?fmtRp(t.jumlahBruto):'-'}</td>
+      <td class="num">${t.tipe==='keluar'?fmtRp(t.jumlahBruto):'-'}</td>
+      <td class="num">${t.pajak && t.pajak.nominal? fmtRp(t.pajak.nominal)+' ('+t.pajak.jenis+')':'-'}</td>
+      <td class="num">${fmtRp(saldo)}</td>
+      <td class="no-print"><button class="btn danger" data-del-transaksi="${t.id}">Hapus</button></td>
+    </tr>`;
+  }).join('');
+
+  const rkasOptions = DB.rkas.map(r=>`<option value="${r.kode}">${r.kode} — ${r.uraian}</option>`).join('');
+  const presetOptions = Object.keys(PAJAK_PRESET).map(k=>`<option value="${k}">${k}</option>`).join('');
+
+  return `
+  ${head('Penatausahaan','Buku Kas Umum (BKU)','Semua transaksi kas masuk & keluar, pajak dihitung otomatis berdasarkan jenis kegiatan.')}
+  <div class="card no-print">
+    <h2>Impor dari File BKU Lama (Excel/CSV)</h2>
+    <p class="hint">Kolom yang dikenali: Tanggal, No Bukti, Kode Rekening, Uraian, Penerimaan, Pengeluaran, Penerima. Metode (tunai/bank) ditebak dari kata di Uraian — bisa diedit lagi setelah impor.</p>
+    <input type="file" id="fileImportBku" accept=".xlsx,.xls,.csv">
+    <br><br>
+    <button class="btn outline" id="btnImportBku">Impor File BKU</button>
+    <div id="importBkuStatus" class="hint"></div>
+  </div>
+  <div class="card">
+    <h2>Input Transaksi</h2>
+    <div class="row">
+      <div class="field"><label>Tanggal</label><input type="date" id="t_tanggal"></div>
+      <div class="field"><label>No. Bukti</label><input id="t_bukti" placeholder="BPU-001"></div>
+      <div class="field"><label>Tipe</label>
+        <select id="t_tipe"><option value="keluar">Pengeluaran</option><option value="masuk">Penerimaan (non-dana awal)</option></select>
+      </div>
+      <div class="field"><label>Metode</label>
+        <select id="t_metode"><option value="tunai">Tunai</option><option value="bank">Bank</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Uraian</label><input id="t_uraian" placeholder="mis. Pembelian ATK bulan Agustus"></div>
+    <div class="row">
+      <div class="field"><label>Kode Rekening (RKAS)</label>
+        <select id="t_kode"><option value="">— pilih (opsional) —</option>${rkasOptions}</select>
+      </div>
+      <div class="field"><label>Jenis Kegiatan (untuk hitung pajak)</label>
+        <select id="t_jenisKegiatan">${presetOptions}</select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Jumlah Bruto (Rp)</label><input type="number" id="t_jumlah" placeholder="0"></div>
+      <div class="field"><label>Persentase Pajak Manual (%)</label><input type="number" id="t_pajakManual" placeholder="isi jika pilih 'Lainnya (manual)'" step="0.1"></div>
+    </div>
+    <div class="hint" id="t_pajakPreview">Nominal pajak akan dihitung otomatis saat disimpan.</div>
+    <br>
+    <button class="btn gold" id="btnAddTransaksi">Simpan Transaksi</button>
+  </div>
+  <div class="card">
+    <h2>Rekap Buku Kas Umum</h2>
+    ${rows.length===0?'<div class="empty">Belum ada transaksi.</div>':`
+    <div style="overflow-x:auto;">
+    <table><thead><tr><th>Tgl</th><th>No.Bukti</th><th>Uraian</th><th>Kode Rek.</th><th>Metode</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Pajak</th><th class="num">Saldo</th><th class="no-print"></th></tr></thead>
+    <tbody>${rowsHtml}</tbody></table>
+    </div>`}
+  </div>`;
+}
+
+/* ============ BUKU PEMBANTU ============ */
+let pembantuTab = 'tunai';
+function pagePembantu(){
+  const tabs = [
+    {id:'tunai', label:'Buku Pembantu Tunai'},
+    {id:'bank', label:'Buku Pembantu Bank'},
+    {id:'pajak', label:'Buku Pembantu Pajak'}
+  ];
+  let content = '';
+  if(pembantuTab==='tunai') content = renderPembantuKas('tunai');
+  else if(pembantuTab==='bank') content = renderPembantuKas('bank');
+  else content = renderPembantuPajak();
+
+  return `
+  ${head('Penatausahaan','Buku Pembantu','Rincian per jenis kas dengan saldo berjalan otomatis, dan rekap pajak yang wajib disetor.')}
+  <div class="section-tabs no-print">
+    ${tabs.map(t=>`<button class="${pembantuTab===t.id?'active':''}" data-pembantu-tab="${t.id}">${t.label}</button>`).join('')}
+  </div>
+  ${content}`;
+}
+function renderPembantuKas(metode){
+  const rows = DB.transaksi.filter(t=>t.jenisPembayaran===metode).sort((a,b)=> new Date(a.tanggal)-new Date(b.tanggal));
+  let saldo = 0;
+  const body = rows.map(t=>{
+    saldo += t.tipe==='masuk'? Number(t.jumlahNetto||0):-Number(t.jumlahNetto||0);
+    return `<tr><td>${fmtDate(t.tanggal)}</td><td class="mono">${t.noBukti||'-'}</td><td>${t.uraian}</td>
+    <td class="num">${t.tipe==='masuk'?fmtRp(t.jumlahNetto):'-'}</td>
+    <td class="num">${t.tipe==='keluar'?fmtRp(t.jumlahNetto):'-'}</td>
+    <td class="num">${fmtRp(saldo)}</td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <h2>${metode==='tunai'?'Kas Tunai':'Kas Bank'} — Saldo Berjalan</h2>
+    ${rows.length===0? '<div class="empty">Belum ada transaksi '+(metode==='tunai'?'tunai':'bank')+'.</div>' : `
+    <table><thead><tr><th>Tanggal</th><th>No. Bukti</th><th>Uraian</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th><th class="num">Saldo</th></tr></thead>
+    <tbody>${body}</tbody>
+    <tfoot><tr><td colspan="5"><b>Saldo Akhir</b></td><td class="num"><b>${fmtRp(saldo)}</b></td></tr></tfoot></table>`}
+  </div>`;
+}
+function renderPembantuPajak(){
+  const rows = DB.transaksi.filter(t=> t.pajak && t.pajak.nominal>0).sort((a,b)=> new Date(a.tanggal)-new Date(b.tanggal));
+  const totalPajak = rows.reduce((s,t)=>s+Number(t.pajak.nominal||0),0);
+  const byJenis = {};
+  rows.forEach(t=>{ byJenis[t.pajak.jenis] = (byJenis[t.pajak.jenis]||0) + Number(t.pajak.nominal||0); });
+  return `
+  <div class="card">
+    <h2>Rekap per Jenis Pajak</h2>
+    <div class="grid grid-3">
+      ${Object.keys(byJenis).length===0?'<div class="empty">Belum ada potongan pajak.</div>':Object.entries(byJenis).map(([j,v])=>`<div class="stat"><div class="lbl">${j}</div><div class="val">${fmtRp(v)}</div></div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <h2>Buku Pembantu Pajak — Rincian</h2>
+    ${rows.length===0?'<div class="empty">Belum ada transaksi berpajak.</div>':`
+    <table><thead><tr><th>Tanggal</th><th>Uraian</th><th>Jenis Pajak</th><th class="num">Persen</th><th class="num">Bruto</th><th class="num">Nominal Pajak</th><th class="num">Netto Dibayar</th></tr></thead>
+    <tbody>${rows.map(t=>`<tr><td>${fmtDate(t.tanggal)}</td><td>${t.uraian}</td><td>${t.pajak.jenis}</td><td class="num">${t.pajak.persen}%</td><td class="num">${fmtRp(t.jumlahBruto)}</td><td class="num">${fmtRp(t.pajak.nominal)}</td><td class="num">${fmtRp(t.jumlahNetto)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="5"><b>Total Pajak Wajib Disetor</b></td><td class="num"><b>${fmtRp(totalPajak)}</b></td><td></td></tr></tfoot></table>`}
+  </div>`;
+}
+
+/* ============ TERBILANG ============ */
+const SATUAN_KATA = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];
+function terbilangInt(n){
+  n = Math.floor(n);
+  if(n < 12) return SATUAN_KATA[n];
+  if(n < 20) return terbilangInt(n-10)+' belas';
+  if(n < 100) return terbilangInt(Math.floor(n/10))+' puluh'+(n%10?' '+terbilangInt(n%10):'');
+  if(n < 200) return 'seratus'+(n%100?' '+terbilangInt(n%100):'');
+  if(n < 1000) return terbilangInt(Math.floor(n/100))+' ratus'+(n%100?' '+terbilangInt(n%100):'');
+  if(n < 2000) return 'seribu'+(n%1000?' '+terbilangInt(n%1000):'');
+  if(n < 1000000) return terbilangInt(Math.floor(n/1000))+' ribu'+(n%1000?' '+terbilangInt(n%1000):'');
+  if(n < 1000000000) return terbilangInt(Math.floor(n/1000000))+' juta'+(n%1000000?' '+terbilangInt(n%1000000):'');
+  return terbilangInt(Math.floor(n/1000000000))+' milyar'+(n%1000000000?' '+terbilangInt(n%1000000000):'');
+}
+function terbilang(n){
+  n = Math.round(Number(n)||0);
+  if(n===0) return 'nol rupiah';
+  const words = terbilangInt(n).replace(/\s+/g,' ').trim();
+  return words.charAt(0).toUpperCase()+words.slice(1)+' rupiah';
+}
+function letterheadFull(){
+  const p = DB.profil;
+  return `
+    <div class="letterhead" style="text-align:center;">
+      <div style="font-size:13px;font-weight:600;">${p.pemerintahKab||''}</div>
+      <div style="font-size:13px;font-weight:600;">${p.dinas||''}</div>
+      <div class="sch" style="font-size:18px;">${p.namaSekolah||''}</div>
+      <div class="addr">${p.alamat||''}${p.kecamatan?', Kec. '+p.kecamatan:''}${p.kabupaten?' Kab. '+p.kabupaten:''}${p.kodePos?' Kode Pos '+p.kodePos:''}</div>
+    </div>`;
+}
+
+/* ============ DOKUMEN (Kwitansi, Nota Pesanan, SPPD, Surat Tugas) ============ */
+let dokumenTab = 'kwitansi';
+function pageDokumen(){
+  const tabs = [
+    {id:'kwitansi', label:'Kwitansi'},
+    {id:'nota', label:'Nota Pesanan'},
+    {id:'sppd', label:'SPPD'},
+    {id:'suratTugas', label:'Surat Tugas'}
+  ];
+  const renderers = {kwitansi:renderKwitansiTab, nota:renderNotaTab, sppd:renderSppdTab, suratTugas:renderSuratTugasTab};
+  return `
+  ${head('Penatausahaan','Kwitansi, Nota & Surat','Buat dokumen SPJ dengan kop surat resmi sekolah — siap cetak.')}
+  <div class="section-tabs no-print">
+    ${tabs.map(t=>`<button class="${dokumenTab===t.id?'active':''}" data-dokumen-tab="${t.id}">${t.label}</button>`).join('')}
+  </div>
+  ${renderers[dokumenTab]()}
+  <div id="dokPrintArea"></div>`;
+}
+
+function renderKwitansiTab(){
+  const rows = DB.kwitansi;
+  const rkasOpt = DB.rkas.map(r=>`<option value="${r.kode}">${r.kode} — ${r.uraian}</option>`).join('');
+  return `
+  <div class="card">
+    <h2>Buat Kwitansi Baru</h2>
+    <div class="row">
+      <div class="field"><label>No. Bukti</label><input id="k_nomor" placeholder="024/BKU/SDN 4 MEREMBU/TAHAP 1/2026"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="k_tanggal"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Kode Kegiatan</label><input id="k_kodeKegiatan" placeholder="mis. 0055"></div>
+      <div class="field"><label>Kode Rekening</label><select id="k_kodeRekening"><option value="">— pilih (opsional) —</option>${rkasOpt}</select></div>
+    </div>
+    <div class="field"><label>Telah diterima dari</label><input id="k_dari" value="Bendahara BOSP ${DB.profil.namaSekolah||''}"></div>
+    <div class="field"><label>Guna membayar</label><input id="k_untuk" placeholder="mis. Bayar Sampul Raport Kelas I"></div>
+    <div class="row">
+      <div class="field"><label>Jumlah (Rp)</label><input type="number" id="k_jumlah" placeholder="0"></div>
+      <div class="field"><label>Nama Penerima</label><input id="k_penerima" placeholder="Nama toko/perorangan"></div>
+    </div>
+    <button class="btn gold" id="btnAddKwitansi">Simpan Kwitansi</button>
+  </div>
+  <div class="card">
+    <h2>Daftar Kwitansi</h2>
+    ${rows.length===0?'<div class="empty">Belum ada kwitansi.</div>':`
+    <table><thead><tr><th>No. Bukti</th><th>Tanggal</th><th>Guna Membayar</th><th>Penerima</th><th class="num">Jumlah</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(k=>`<tr><td class="mono">${k.nomor}</td><td>${fmtDate(k.tanggal)}</td><td>${k.untuk}</td><td>${k.penerima}</td><td class="num">${fmtRp(k.jumlah)}</td><td class="no-print"><button class="btn sm outline" data-print-kwitansi="${k.id}">Cetak</button> <button class="btn danger" data-del-kwitansi="${k.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printKwitansi(k){
+  const p = DB.profil;
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    ${letterheadFull()}
+    <div style="border:2px solid #173254;padding:16px;">
+      <div style="background:#d9d9d9;text-align:center;font-weight:700;font-size:16px;padding:8px;margin-bottom:14px;">KWITANSI PEMBAYARAN</div>
+      <div class="grid grid-2">
+        <div>
+          <div>No. Bukti&nbsp; : ${k.nomor}</div>
+          <div>Tanggal&nbsp;&nbsp;&nbsp; : ${fmtDate(k.tanggal)}</div>
+        </div>
+        <div>
+          <div>Kode Kegiatan &nbsp;: ${k.kodeKegiatan||'-'}</div>
+          <div>Kode Rekening &nbsp;: ${k.kodeRekening||'-'}</div>
+          <div>Tahun Anggaran : ${p.tahunAnggaran}</div>
+        </div>
+      </div>
+      <br>
+      <div>Telah diterima dari &nbsp;: ${k.dari}</div>
+      <div>Uang sebanyak &nbsp;&nbsp;&nbsp;&nbsp;: <i>${terbilang(k.jumlah)}</i></div>
+      <div>Guna membayar &nbsp;&nbsp;: ${k.untuk}</div>
+      <br>
+      <div style="border:2px solid #b8862f;border-radius:6px;display:inline-block;padding:8px 24px;font-weight:700;font-size:18px;">Rp ${Number(k.jumlah).toLocaleString('id-ID')}</div>
+      <div class="grid grid-3" style="margin-top:36px;text-align:center;">
+        <div>Mengetahui,<br>Kepala Sekolah<br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}</div>
+        <div>Dibayar oleh,<br>Bendahara BOSP<br><br><br><br><b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
+        <div>${p.kabupaten||''}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,<br><br><br><br><b>${k.penerima||''}</b></div>
+      </div>
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+function renderNotaTab(){
+  const rows = DB.notaPesanan;
+  return `
+  <div class="card">
+    <h2>Buat Nota Pesanan Baru</h2>
+    <div class="row">
+      <div class="field"><label>Nomor</label><input id="n_nomor" placeholder="mis. 012/NP/VIII/2026"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="n_tanggal"></div>
+    </div>
+    <div class="field"><label>Kepada (nama toko/penyedia)</label><input id="n_kepada" placeholder="Toko ABC"></div>
+    <div class="field"><label>Daftar barang (satu baris per barang, format: nama | jumlah | satuan | harga satuan)</label>
+      <textarea id="n_items" rows="4" placeholder="Kertas HVS | 10 | rim | 55000&#10;Spidol Boardmarker | 5 | buah | 12000"></textarea>
+    </div>
+    <button class="btn gold" id="btnAddNota">Simpan Nota Pesanan</button>
+  </div>
+  <div class="card">
+    <h2>Daftar Nota Pesanan</h2>
+    ${rows.length===0?'<div class="empty">Belum ada nota pesanan.</div>':`
+    <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Kepada</th><th class="num">Total</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(n=>`<tr><td class="mono">${n.nomor}</td><td>${fmtDate(n.tanggal)}</td><td>${n.kepada}</td><td class="num">${fmtRp(n.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="no-print"><button class="btn sm outline" data-print-nota="${n.id}">Cetak</button> <button class="btn danger" data-del-nota="${n.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printNota(n){
+  const p = DB.profil;
+  const total = n.items.reduce((s,i)=>s+i.jumlah*i.harga,0);
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    ${letterheadFull()}
+    <h3 style="text-align:center;">NOTA PESANAN BARANG</h3>
+    <div class="row"><div>Nomor &nbsp;: ${n.nomor}</div><div>Tanggal : ${fmtDate(n.tanggal)}</div></div>
+    <div>Kepada Yth. &nbsp;: <b>${n.kepada}</b></div>
+    <p>Dengan ini kami memesan barang sebagai berikut untuk keperluan sekolah:</p>
+    <table><thead><tr><th>No.</th><th>Nama Barang</th><th class="num">Jumlah</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah Harga</th></tr></thead>
+    <tbody>${n.items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.nama}</td><td class="num">${i.jumlah}</td><td>${i.satuan}</td><td class="num">${fmtRp(i.harga)}</td><td class="num">${fmtRp(i.jumlah*i.harga)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="5"><b>Total</b></td><td class="num"><b>${fmtRp(total)}</b></td></tr></tfoot></table>
+    <div class="grid grid-2" style="margin-top:30px;text-align:center;">
+      <div></div>
+      <div>${p.kabupaten||''}, ${fmtDate(n.tanggal)}<br>Bendahara BOSP<br><br><br><br><b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+function renderSppdTab(){
+  const rows = DB.sppd;
+  return `
+  <div class="card">
+    <h2>Buat SPPD Baru</h2>
+    <div class="row">
+      <div class="field"><label>Nomor SPPD</label><input id="s_nomor" placeholder="mis. 008/SPPD/VIII/2026"></div>
+      <div class="field"><label>Tanggal Diterbitkan</label><input type="date" id="s_tanggal"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Nama Pegawai</label><input id="s_nama" placeholder="mis. Maemunah, S.Pd"></div>
+      <div class="field"><label>NIP</label><input id="s_nip"></div>
+      <div class="field"><label>Jabatan</label><input id="s_jabatan" placeholder="Bendahara BOSP"></div>
+    </div>
+    <div class="field"><label>Maksud Perjalanan</label><input id="s_maksud" placeholder="mis. Mengikuti Bimtek Pengelolaan Dana BOS"></div>
+    <div class="row">
+      <div class="field"><label>Tempat Tujuan</label><input id="s_tujuan" placeholder="mis. Mataram"></div>
+      <div class="field"><label>Alat Angkut</label><input id="s_angkut" placeholder="Kendaraan pribadi/umum"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Tanggal Berangkat</label><input type="date" id="s_berangkat"></div>
+      <div class="field"><label>Tanggal Kembali</label><input type="date" id="s_kembali"></div>
+    </div>
+    <button class="btn gold" id="btnAddSppd">Simpan SPPD</button>
+  </div>
+  <div class="card">
+    <h2>Daftar SPPD</h2>
+    ${rows.length===0?'<div class="empty">Belum ada SPPD.</div>':`
+    <table><thead><tr><th>Nomor</th><th>Nama</th><th>Tujuan</th><th>Berangkat</th><th>Kembali</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(s=>`<tr><td class="mono">${s.nomor}</td><td>${s.nama}</td><td>${s.tujuan}</td><td>${fmtDate(s.berangkat)}</td><td>${fmtDate(s.kembali)}</td><td class="no-print"><button class="btn sm outline" data-print-sppd="${s.id}">Cetak</button> <button class="btn danger" data-del-sppd="${s.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printSppd(s){
+  const p = DB.profil;
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    ${letterheadFull()}
+    <h3 style="text-align:center;">SURAT PERINTAH PERJALANAN DINAS (SPPD)</h3>
+    <div style="text-align:center;margin-top:-8px;">Nomor: ${s.nomor}</div>
+    <table style="margin-top:14px;"><tbody>
+      <tr><td style="width:220px;">1. Nama Pegawai</td><td>: ${s.nama}</td></tr>
+      <tr><td>2. NIP</td><td>: ${s.nip||'-'}</td></tr>
+      <tr><td>3. Jabatan</td><td>: ${s.jabatan}</td></tr>
+      <tr><td>4. Maksud Perjalanan</td><td>: ${s.maksud}</td></tr>
+      <tr><td>5. Tempat Tujuan</td><td>: ${s.tujuan}</td></tr>
+      <tr><td>6. Alat Angkut</td><td>: ${s.angkut||'-'}</td></tr>
+      <tr><td>7. Tanggal Berangkat</td><td>: ${fmtDate(s.berangkat)}</td></tr>
+      <tr><td>8. Tanggal Kembali</td><td>: ${fmtDate(s.kembali)}</td></tr>
+    </tbody></table>
+    <div class="grid grid-2" style="margin-top:36px;text-align:center;">
+      <div>${p.kabupaten||''}, ${fmtDate(s.tanggal)}<br>Yang Melaksanakan Perjalanan,<br><br><br><br><b>${s.nama}</b><br>NIP. ${s.nip||'-'}</div>
+      <div>Kepala Sekolah,<br><br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}</div>
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+function renderSuratTugasTab(){
+  const rows = DB.suratTugas;
+  return `
+  <div class="card">
+    <h2>Buat Surat Tugas Baru</h2>
+    <div class="row">
+      <div class="field"><label>Nomor Surat</label><input id="st_nomor" placeholder="mis. 015/ST/VIII/2026"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="st_tanggal"></div>
+    </div>
+    <div class="field"><label>Dasar</label><input id="st_dasar" placeholder="mis. Undangan Dinas Pendidikan No. .../2026"></div>
+    <div class="row">
+      <div class="field"><label>Nama yang Ditugaskan</label><input id="st_nama" placeholder="mis. Maemunah, S.Pd"></div>
+      <div class="field"><label>NIP</label><input id="st_nip"></div>
+      <div class="field"><label>Jabatan</label><input id="st_jabatan" placeholder="Bendahara BOSP"></div>
+    </div>
+    <div class="field"><label>Untuk Melaksanakan Tugas</label><textarea id="st_tugas" rows="2" placeholder="mis. Mengikuti Bimbingan Teknis Pengelolaan Dana BOS di Mataram"></textarea></div>
+    <button class="btn gold" id="btnAddSuratTugas">Simpan Surat Tugas</button>
+  </div>
+  <div class="card">
+    <h2>Daftar Surat Tugas</h2>
+    ${rows.length===0?'<div class="empty">Belum ada surat tugas.</div>':`
+    <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Nama</th><th>Tugas</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(t=>`<tr><td class="mono">${t.nomor}</td><td>${fmtDate(t.tanggal)}</td><td>${t.nama}</td><td>${t.tugas}</td><td class="no-print"><button class="btn sm outline" data-print-suratTugas="${t.id}">Cetak</button> <button class="btn danger" data-del-suratTugas="${t.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printSuratTugas(t){
+  const p = DB.profil;
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    ${letterheadFull()}
+    <h3 style="text-align:center;">SURAT TUGAS</h3>
+    <div style="text-align:center;margin-top:-8px;">Nomor: ${t.nomor}</div>
+    <p style="margin-top:16px;">Dasar &nbsp;: ${t.dasar||'-'}</p>
+    <p>Kepala Sekolah ${p.namaSekolah} menugaskan kepada:</p>
+    <table><tbody>
+      <tr><td style="width:150px;">Nama</td><td>: ${t.nama}</td></tr>
+      <tr><td>NIP</td><td>: ${t.nip||'-'}</td></tr>
+      <tr><td>Jabatan</td><td>: ${t.jabatan}</td></tr>
+    </tbody></table>
+    <p>Untuk melaksanakan tugas: <b>${t.tugas}</b></p>
+    <p>Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
+    <div style="text-align:center;margin-top:36px;">
+      ${p.kabupaten||''}, ${fmtDate(t.tanggal)}<br>Kepala Sekolah,<br><br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+/* ============ CHECKLIST SPJ ============ */
+const SPJ_CHECKLIST = {
+  'Honorarium Pendidik dan Tenaga Kependidikan Non ASN': [
+    'Kwitansi per orang/per bulan',
+    'Daftar Penerimaan Honor per orang/per bulan',
+    'SK Kepala Sekolah tentang Pendidik dan Tenaga Kependidikan Non ASN yang dibayar melalui dana BOS',
+    'Daftar Hadir Pendidik dan Tenaga Kependidikan Non ASN'
+  ],
+  'Perjalanan Dinas': [
+    'Kwitansi',
+    'Daftar Penerimaan Transport',
+    'Rincian SPPD (Surat Perintah Perjalanan Dinas)',
+    'SPPD yang sudah ditandatangani/stempel dari tempat yang dituju',
+    'Surat Perintah Tugas',
+    'Daftar Hadir (apabila diberikan kepada peserta kegiatan)',
+    'Surat undangan (jika sosialisasi) atau surat dasar pelaksanaan tugas (jika bukan sosialisasi)',
+    'Laporan hasil perjalanan dinas',
+    'Dokumentasi/Foto kegiatan'
+  ],
+  'Pembelian Makanan dan Minuman': [
+    'Kwitansi',
+    'Surat Pesanan',
+    'Dokumen Perencanaan',
+    'BAST (Berita Acara Serah Terima)',
+    'Nota lengkap dengan paraf dan stempel basah dari catering/warung makan',
+    'Undangan',
+    'Notulen (tanggal/hari, waktu mulai, peserta, hasil kegiatan, waktu selesai)',
+    'Daftar Hadir Peserta',
+    'Tanda terima konsumsi',
+    'Dokumentasi/Foto kegiatan',
+    'Bukti Setor Pajak (Daerah dan PPh 23)'
+  ],
+  'Belanja Pengadaan Barang': [
+    'Bukti transaksi (utamakan belanja di SIPLah)',
+    'Kwitansi',
+    'Dokumen perencanaan PBJ Satdik',
+    'Dokumen hasil perbandingan',
+    'Dokumen hasil negosiasi & Surat pemesanan',
+    'Berita Acara Serah Terima',
+    'Bukti pembayaran',
+    'Foto barang (tampak spesifikasi)',
+    'Bukti Setor Pajak',
+    'Jika non-SIPLah: kelengkapan dokumen harus sama dengan dokumen SIPLah'
+  ],
+  'Jasa Tukang/Ongkos Tukang': [
+    'Kwitansi',
+    'Daftar Penerimaan Jasa Tukang',
+    'Daftar Hadir Tukang per hari',
+    'SPK (Surat Perintah Kerja)',
+    'Dokumentasi/foto (sebelum dan sesudah pemeliharaan, menunjukkan persentase pekerjaan)'
+  ],
+  'Jasa Pelatih Ekstrakurikuler': [
+    'Kwitansi',
+    'Daftar Penerimaan Jasa Pelatih',
+    'Sertifikat Pelatih',
+    'SK Kepala Sekolah tentang Penetapan Pelatih Ekstrakurikuler',
+    'Program Kegiatan',
+    'Jadwal Latihan',
+    'Daftar Hadir Pelatih & Siswa',
+    'Dokumentasi saat latihan',
+    'Bukti Setor Pajak'
+  ],
+  'Pendaftaran Lomba-Lomba': [
+    'Kwitansi',
+    'Kwitansi panjang dari Panitia Lomba',
+    'Daftar Penerimaan pendaftaran',
+    'Formulir pendaftaran (berisi identitas peserta)'
+  ],
+  'Jasa Retribusi/Pengangkutan Sampah': [
+    'Kwitansi',
+    'Daftar Penerimaan Jasa Retribusi Sampah',
+    'SPK (Surat Perintah Kerja)',
+    'Daftar hadir pengambilan sampah',
+    'Dokumentasi/foto'
+  ],
+  'Langganan Daya dan Jasa (Listrik/Air/Indihome)': [
+    'Kwitansi',
+    'Bukti pembayaran (struk)',
+    'Surat Perjanjian Kerja Sama (jika langganan daya & jasa menumpang)',
+    'Pergeseran anggaran (jika terjadi perbedaan antara anggaran dan struk)'
+  ],
+  'Paket Data dan Langganan Koran': [
+    'Kwitansi',
+    'Bukti pembayaran (struk)'
+  ],
+  'Sewa': [
+    'Kwitansi',
+    'Daftar Penerimaan',
+    'Kwitansi panjang',
+    'SPK (Surat Perintah Kerja)',
+    'Foto'
+  ]
+};
+
+function pageChecklist(){
+  const rows = DB.checklistSpj;
+  const kategoriOpt = Object.keys(SPJ_CHECKLIST).map(k=>`<option value="${k}">${k}</option>`).join('');
+  return `
+  ${head('Pelaporan','Checklist SPJ','Buat checklist kelengkapan dokumen SPJ otomatis sesuai jenis kegiatan.')}
+  <div class="card">
+    <h2>Buat Checklist Baru</h2>
+    <div class="row">
+      <div class="field"><label>Jenis Kegiatan</label><select id="c_kategori">${kategoriOpt}</select></div>
+      <div class="field"><label>Keterangan (uraian kegiatan)</label><input id="c_uraian" placeholder="mis. Honor Guru Bulan Agustus 2026"></div>
+    </div>
+    <button class="btn gold" id="btnAddChecklist">Buat Checklist</button>
+  </div>
+  ${rows.length===0?'<div class="empty">Belum ada checklist SPJ dibuat.</div>':rows.map(c=>{
+    const done = c.items.filter(i=>i.checked).length;
+    return `<div class="card">
+      <h2>${c.uraian || c.kategori} <span class="hint">(${c.kategori})</span></h2>
+      <p class="hint">${done} dari ${c.items.length} dokumen sudah lengkap</p>
+      <table><tbody>
+        ${c.items.map((it,idx)=>`<tr><td style="width:30px;"><input type="checkbox" data-checklist-item="${c.id}|${idx}" ${it.checked?'checked':''}></td><td>${it.text}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="no-print" style="margin-top:10px;"><button class="btn danger" data-del-checklist="${c.id}">Hapus Checklist</button></div>
+    </div>`;
+  }).join('')}`;
+}
+
+/* ============ LAPORAN ============ */
+function pageLaporan(){
+  const sumberList = [...new Set(DB.penerimaan.map(p=>p.sumber))];
+  const opts = sumberList.length? sumberList.map(s=>`<option>${s}</option>`).join(''): '<option>BOS Reguler</option>';
+  return `
+  ${head('Pelaporan','Laporan & Cetak','Hasilkan dokumen rekonsiliasi dan rekap keuangan siap cetak.')}
+  <div class="card">
+    <h2>Berita Acara Rekonsiliasi (Ringkas)</h2>
+    <div class="row">
+      <div class="field"><label>Sumber Dana</label><select id="lap_sumber">${opts}</select></div>
+      <div class="field"><label>Periode</label>
+        <select id="lap_periode"><option>Triwulan I</option><option>Triwulan II</option><option>Triwulan III</option><option>Triwulan IV</option><option>Satu Tahun Anggaran</option></select>
+      </div>
+    </div>
+    <button class="btn gold no-print" id="btnGenLaporan">Tampilkan Laporan</button>
+  </div>
+  <div id="laporanArea"></div>
+  <div class="card">
+    <h2>Ekspor Buku Kas Umum (CSV)</h2>
+    <p class="hint">Unduh seluruh transaksi BKU dalam format CSV untuk diolah di Excel.</p>
+    <button class="btn outline" id="btnExportCsv">Unduh CSV BKU</button>
+  </div>`;
+}
+
+function generateLaporanHtml(sumber, periode){
+  const trans = DB.transaksi; // simple: not filtered by sumberDana field since BKU form currently doesn't tag sumberDana; use all
+  const totalMasuk = trans.filter(t=>t.tipe==='masuk').reduce((s,t)=>s+Number(t.jumlahNetto||0),0);
+  const totalKeluar = trans.filter(t=>t.tipe==='keluar').reduce((s,t)=>s+Number(t.jumlahNetto||0),0);
+  const totalPenerimaanDana = DB.penerimaan.filter(p=>p.sumber===sumber).reduce((s,p)=>s+Number(p.jumlah||0),0);
+  const totalPajak = trans.reduce((s,t)=>s+Number(t.pajak?.nominal||0),0);
+  const saldoAkhir = totalPenerimaanDana + totalMasuk - totalKeluar;
+  const p = DB.profil;
+  return `
+  <div class="card" id="laporanCetak">
+    <div class="letterhead">
+      <div class="sch">${p.namaSekolah||'(Nama Sekolah belum diisi)'}</div>
+      <div class="addr">${p.alamat||''} ${p.kecamatan?', '+p.kecamatan:''} ${p.kabupaten?', '+p.kabupaten:''}</div>
+      <div class="addr">NPSN: ${p.npsn||'-'}</div>
+    </div>
+    <h3 style="text-align:center;">BERITA ACARA REKONSILIASI DANA BOS</h3>
+    <p style="text-align:center;margin-top:-6px;color:var(--ink-soft);">Sumber Dana: ${sumber} — Periode: ${periode} — Tahun Anggaran ${p.tahunAnggaran}</p>
+    <table>
+      <tbody>
+        <tr><td>Total Dana Diterima</td><td class="num">${fmtRp(totalPenerimaanDana)}</td></tr>
+        <tr><td>Total Penerimaan Lain (BKU)</td><td class="num">${fmtRp(totalMasuk)}</td></tr>
+        <tr><td>Total Pengeluaran / Realisasi</td><td class="num">${fmtRp(totalKeluar)}</td></tr>
+        <tr><td>Total Pajak Dipungut/Disetor</td><td class="num">${fmtRp(totalPajak)}</td></tr>
+        <tr><td><b>Saldo Kas Akhir</b></td><td class="num"><b>${fmtRp(saldoAkhir)}</b></td></tr>
+      </tbody>
+    </table>
+    <div class="grid grid-2" style="margin-top:34px;">
+      <div style="text-align:center;">
+        <div>Bendahara BOS</div><br><br><br>
+        <div><b>${p.bendahara||'( ______________ )'}</b></div>
+        <div>NIP. ${p.nipBendahara||'-'}</div>
+      </div>
+      <div style="text-align:center;">
+        <div>Kepala Sekolah</div><br><br><br>
+        <div><b>${p.kepsek||'( ______________ )'}</b></div>
+        <div>NIP. ${p.nipKepsek||'-'}</div>
+      </div>
+    </div>
+    <div class="no-print" style="margin-top:18px;"><button class="btn outline" onclick="window.print()">Cetak / Simpan PDF</button></div>
+  </div>`;
+}
+
+/* ============ BACKUP ============ */
+function pageBackup(){
+  return `
+  ${head('Utilitas','Cadangkan Data','Ekspor seluruh data ke file JSON, atau pulihkan dari cadangan sebelumnya.')}
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Ekspor Data</h2>
+      <p class="hint">Simpan file cadangan secara berkala, terutama sebelum mengganti perangkat.</p>
+      <button class="btn gold" id="btnExportJson">Unduh Cadangan (.json)</button>
+    </div>
+    <div class="card">
+      <h2>Impor / Pulihkan Data</h2>
+      <p class="hint">Pilih file cadangan .json untuk memulihkan data. Ini akan menimpa data saat ini.</p>
+      <input type="file" id="fileImport" accept="application/json">
+      <br><br>
+      <button class="btn outline" id="btnImportJson">Pulihkan dari File</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Reset Data</h2>
+    <p class="hint">Menghapus seluruh data di aplikasi ini secara permanen.</p>
+    <button class="btn danger" id="btnResetAll">Hapus Semua Data</button>
+  </div>`;
+}
+
+/* ============ EVENTS ============ */
+function attachPageEvents(){
+  // Profil
+  const btnSaveProfil = document.getElementById('btnSaveProfil');
+  if(btnSaveProfil) btnSaveProfil.addEventListener('click', ()=>{
+    ['pemerintahKab','dinas','namaSekolah','npsn','alamat','kecamatan','kabupaten','kodePos','tahunAnggaran','kepsek','nipKepsek','bendahara','nipBendahara'].forEach(k=>{
+      DB.profil[k] = document.getElementById('f_'+k).value;
+    });
+    saveDB(); toast('Profil sekolah disimpan.');
+  });
+
+  // Penerimaan
+  const btnAddPenerimaan = document.getElementById('btnAddPenerimaan');
+  if(btnAddPenerimaan) btnAddPenerimaan.addEventListener('click', ()=>{
+    const tanggal = document.getElementById('p_tanggal').value;
+    const jumlah = document.getElementById('p_jumlah').value;
+    if(!tanggal || !jumlah){ toast('Isi tanggal dan jumlah.'); return; }
+    DB.penerimaan.push({ id:uid(), tanggal, sumber:document.getElementById('p_sumber').value, tahap:document.getElementById('p_tahap').value, jumlah:Number(jumlah), ket:document.getElementById('p_ket').value });
+    saveDB(); toast('Penerimaan dana ditambahkan.'); render();
+  });
+  document.querySelectorAll('[data-del-penerimaan]').forEach(b=>b.addEventListener('click',()=>{
+    DB.penerimaan = DB.penerimaan.filter(p=>p.id!==b.dataset.delPenerimaan); saveDB(); render();
+  }));
+
+  // Impor RKAS
+  const btnImportRkas = document.getElementById('btnImportRkas');
+  if(btnImportRkas) btnImportRkas.addEventListener('click', ()=>{
+    const file = document.getElementById('fileImportRkas').files[0];
+    if(!file){ toast('Pilih file RPD/RKAS terlebih dahulu.'); return; }
+    importRkasFile(file);
+  });
+
+  // RKAS
+  const btnAddRkas = document.getElementById('btnAddRkas');
+  if(btnAddRkas) btnAddRkas.addEventListener('click', ()=>{
+    const kode = document.getElementById('r_kode').value;
+    const uraian = document.getElementById('r_uraian').value;
+    const volume = Number(document.getElementById('r_volume').value||0);
+    const harga = Number(document.getElementById('r_harga').value||0);
+    if(!kode || !uraian){ toast('Isi kode rekening dan uraian.'); return; }
+    DB.rkas.push({ id:uid(), kode, uraian, sumber:document.getElementById('r_sumber').value, volume, satuan:document.getElementById('r_satuan').value, harga, jumlah:volume*harga, triwulan:document.getElementById('r_triwulan').value });
+    saveDB(); toast('Rincian RKAS ditambahkan.'); render();
+  });
+  document.querySelectorAll('[data-del-rkas]').forEach(b=>b.addEventListener('click',()=>{
+    DB.rkas = DB.rkas.filter(r=>r.id!==b.dataset.delRkas); saveDB(); render();
+  }));
+
+  // Impor BKU
+  const btnImportBku = document.getElementById('btnImportBku');
+  if(btnImportBku) btnImportBku.addEventListener('click', ()=>{
+    const file = document.getElementById('fileImportBku').files[0];
+    if(!file){ toast('Pilih file BKU terlebih dahulu.'); return; }
+    importBkuFile(file);
+  });
+
+  // BKU
+  const jenisKegiatanSel = document.getElementById('t_jenisKegiatan');
+  const pajakPreview = document.getElementById('t_pajakPreview');
+  function updatePajakPreview(){
+    if(!jenisKegiatanSel) return;
+    const preset = PAJAK_PRESET[jenisKegiatanSel.value];
+    const manualInput = document.getElementById('t_pajakManual');
+    if(preset.jenis==='Manual'){
+      pajakPreview.textContent = 'Masukkan persentase pajak manual di kolom sebelah.';
+    } else {
+      pajakPreview.textContent = `Akan dipotong otomatis: ${preset.jenis} ${preset.persen}% dari jumlah bruto.`;
+      if(manualInput) manualInput.value = preset.persen;
+    }
+  }
+  if(jenisKegiatanSel){ jenisKegiatanSel.addEventListener('change', updatePajakPreview); updatePajakPreview(); }
+
+  const btnAddTransaksi = document.getElementById('btnAddTransaksi');
+  if(btnAddTransaksi) btnAddTransaksi.addEventListener('click', ()=>{
+    const tanggal = document.getElementById('t_tanggal').value;
+    const uraian = document.getElementById('t_uraian').value;
+    const bruto = Number(document.getElementById('t_jumlah').value||0);
+    if(!tanggal || !uraian || !bruto){ toast('Isi tanggal, uraian, dan jumlah.'); return; }
+    const tipe = document.getElementById('t_tipe').value;
+    const metode = document.getElementById('t_metode').value;
+    const kodeRekening = document.getElementById('t_kode').value;
+    const jenisKegiatan = document.getElementById('t_jenisKegiatan').value;
+    const preset = PAJAK_PRESET[jenisKegiatan];
+    let persen = preset.persen;
+    let jenisPajak = preset.jenis;
+    if(jenisKegiatan === 'Lainnya (manual)'){
+      persen = Number(document.getElementById('t_pajakManual').value||0);
+      jenisPajak = persen>0 ? 'Pajak Manual' : 'Tidak dipungut';
+    }
+    const nominalPajak = tipe==='keluar' ? Math.round(bruto * (persen/100)) : 0;
+    const netto = tipe==='keluar' ? bruto - nominalPajak : bruto;
+    DB.transaksi.push({
+      id:uid(), tanggal, noBukti:document.getElementById('t_bukti').value, uraian, kodeRekening,
+      jenisPembayaran:metode, tipe, jumlahBruto:bruto,
+      pajak: nominalPajak>0 ? {jenis:jenisPajak, persen, nominal:nominalPajak} : {jenis:jenisPajak, persen:0, nominal:0},
+      jumlahNetto: netto
+    });
+    saveDB(); toast('Transaksi BKU disimpan.'); render();
+  });
+  document.querySelectorAll('[data-del-transaksi]').forEach(b=>b.addEventListener('click',()=>{
+    DB.transaksi = DB.transaksi.filter(t=>t.id!==b.dataset.delTransaksi); saveDB(); render();
+  }));
+
+  // Buku Pembantu tabs
+  document.querySelectorAll('[data-pembantu-tab]').forEach(b=>b.addEventListener('click',()=>{
+    pembantuTab = b.dataset.pembantuTab; render();
+  }));
+
+  // Dokumen tabs
+  document.querySelectorAll('[data-dokumen-tab]').forEach(b=>b.addEventListener('click',()=>{
+    dokumenTab = b.dataset.dokumenTab; render();
+  }));
+
+  // Kwitansi
+  const btnAddKwitansi = document.getElementById('btnAddKwitansi');
+  if(btnAddKwitansi) btnAddKwitansi.addEventListener('click', ()=>{
+    const nomor = document.getElementById('k_nomor').value;
+    const jumlah = Number(document.getElementById('k_jumlah').value||0);
+    if(!nomor || !jumlah){ toast('Isi nomor dan jumlah.'); return; }
+    DB.kwitansi.push({ id:uid(), tanggal:document.getElementById('k_tanggal').value, nomor,
+      kodeKegiatan:document.getElementById('k_kodeKegiatan').value, kodeRekening:document.getElementById('k_kodeRekening').value,
+      dari:document.getElementById('k_dari').value, untuk:document.getElementById('k_untuk').value, jumlah, penerima:document.getElementById('k_penerima').value });
+    saveDB(); toast('Kwitansi disimpan.'); render();
+  });
+  document.querySelectorAll('[data-del-kwitansi]').forEach(b=>b.addEventListener('click',()=>{
+    DB.kwitansi = DB.kwitansi.filter(k=>k.id!==b.dataset.delKwitansi); saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-kwitansi]').forEach(b=>b.addEventListener('click',()=>{
+    printKwitansi(DB.kwitansi.find(x=>x.id===b.dataset.printKwitansi));
+  }));
+
+  // Nota Pesanan
+  const btnAddNota = document.getElementById('btnAddNota');
+  if(btnAddNota) btnAddNota.addEventListener('click', ()=>{
+    const nomor = document.getElementById('n_nomor').value;
+    const kepada = document.getElementById('n_kepada').value;
+    const raw = document.getElementById('n_items').value.trim();
+    if(!nomor || !kepada || !raw){ toast('Isi nomor, kepada, dan daftar barang.'); return; }
+    const items = raw.split('\n').filter(l=>l.trim()).map(l=>{
+      const parts = l.split('|').map(s=>s.trim());
+      return { nama:parts[0]||'', jumlah:Number(parts[1]||0), satuan:parts[2]||'', harga:Number(parts[3]||0) };
+    });
+    DB.notaPesanan.push({ id:uid(), nomor, tanggal:document.getElementById('n_tanggal').value, kepada, items });
+    saveDB(); toast('Nota pesanan disimpan.'); render();
+  });
+  document.querySelectorAll('[data-del-nota]').forEach(b=>b.addEventListener('click',()=>{
+    DB.notaPesanan = DB.notaPesanan.filter(n=>n.id!==b.dataset.delNota); saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-nota]').forEach(b=>b.addEventListener('click',()=>{
+    printNota(DB.notaPesanan.find(x=>x.id===b.dataset.printNota));
+  }));
+
+  // SPPD
+  const btnAddSppd = document.getElementById('btnAddSppd');
+  if(btnAddSppd) btnAddSppd.addEventListener('click', ()=>{
+    const nomor = document.getElementById('s_nomor').value;
+    const nama = document.getElementById('s_nama').value;
+    if(!nomor || !nama){ toast('Isi nomor dan nama pegawai.'); return; }
+    DB.sppd.push({ id:uid(), nomor, tanggal:document.getElementById('s_tanggal').value, nama, nip:document.getElementById('s_nip').value,
+      jabatan:document.getElementById('s_jabatan').value, maksud:document.getElementById('s_maksud').value, tujuan:document.getElementById('s_tujuan').value,
+      angkut:document.getElementById('s_angkut').value, berangkat:document.getElementById('s_berangkat').value, kembali:document.getElementById('s_kembali').value });
+    saveDB(); toast('SPPD disimpan.'); render();
+  });
+  document.querySelectorAll('[data-del-sppd]').forEach(b=>b.addEventListener('click',()=>{
+    DB.sppd = DB.sppd.filter(s=>s.id!==b.dataset.delSppd); saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-sppd]').forEach(b=>b.addEventListener('click',()=>{
+    printSppd(DB.sppd.find(x=>x.id===b.dataset.printSppd));
+  }));
+
+  // Surat Tugas
+  const btnAddSuratTugas = document.getElementById('btnAddSuratTugas');
+  if(btnAddSuratTugas) btnAddSuratTugas.addEventListener('click', ()=>{
+    const nomor = document.getElementById('st_nomor').value;
+    const nama = document.getElementById('st_nama').value;
+    if(!nomor || !nama){ toast('Isi nomor dan nama.'); return; }
+    DB.suratTugas.push({ id:uid(), nomor, tanggal:document.getElementById('st_tanggal').value, dasar:document.getElementById('st_dasar').value,
+      nama, nip:document.getElementById('st_nip').value, jabatan:document.getElementById('st_jabatan').value, tugas:document.getElementById('st_tugas').value });
+    saveDB(); toast('Surat tugas disimpan.'); render();
+  });
+  document.querySelectorAll('[data-del-suratTugas]').forEach(b=>b.addEventListener('click',()=>{
+    DB.suratTugas = DB.suratTugas.filter(t=>t.id!==b.dataset.delSuratTugas); saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-suratTugas]').forEach(b=>b.addEventListener('click',()=>{
+    printSuratTugas(DB.suratTugas.find(x=>x.id===b.dataset.printSuratTugas));
+  }));
+
+  // Checklist SPJ
+  const btnAddChecklist = document.getElementById('btnAddChecklist');
+  if(btnAddChecklist) btnAddChecklist.addEventListener('click', ()=>{
+    const kategori = document.getElementById('c_kategori').value;
+    const uraian = document.getElementById('c_uraian').value;
+    const items = SPJ_CHECKLIST[kategori].map(text=>({text, checked:false}));
+    DB.checklistSpj.push({ id:uid(), kategori, uraian, items });
+    saveDB(); toast('Checklist SPJ dibuat.'); render();
+  });
+  document.querySelectorAll('[data-checklist-item]').forEach(cb=>cb.addEventListener('change',()=>{
+    const [cid, idx] = cb.dataset.checklistItem.split('|');
+    const c = DB.checklistSpj.find(x=>x.id===cid);
+    if(c){ c.items[Number(idx)].checked = cb.checked; saveDB(); }
+  }));
+  document.querySelectorAll('[data-del-checklist]').forEach(b=>b.addEventListener('click',()=>{
+    DB.checklistSpj = DB.checklistSpj.filter(c=>c.id!==b.dataset.delChecklist); saveDB(); render();
+  }));
+
+  // Laporan
+  const btnGenLaporan = document.getElementById('btnGenLaporan');
+  if(btnGenLaporan) btnGenLaporan.addEventListener('click', ()=>{
+    const sumber = document.getElementById('lap_sumber').value;
+    const periode = document.getElementById('lap_periode').value;
+    document.getElementById('laporanArea').innerHTML = generateLaporanHtml(sumber, periode);
+  });
+  const btnExportCsv = document.getElementById('btnExportCsv');
+  if(btnExportCsv) btnExportCsv.addEventListener('click', ()=>{
+    let csv = 'Tanggal,No Bukti,Uraian,Kode Rekening,Metode,Tipe,Bruto,Jenis Pajak,Nominal Pajak,Netto\n';
+    DB.transaksi.forEach(t=>{
+      csv += [fmtDate(t.tanggal), t.noBukti||'', '"'+(t.uraian||'').replace(/"/g,'""')+'"', t.kodeRekening||'', t.jenisPembayaran, t.tipe, t.jumlahBruto, t.pajak?.jenis||'', t.pajak?.nominal||0, t.jumlahNetto].join(',') + '\n';
+    });
+    downloadFile('bku_'+(DB.profil.tahunAnggaran||'')+'.csv', csv, 'text/csv');
+  });
+
+  // Backup
+  const btnExportJson = document.getElementById('btnExportJson');
+  if(btnExportJson) btnExportJson.addEventListener('click', ()=>{
+    downloadFile('cadangan_siperbos_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(DB,null,2), 'application/json');
+  });
+  const btnImportJson = document.getElementById('btnImportJson');
+  if(btnImportJson) btnImportJson.addEventListener('click', ()=>{
+    const file = document.getElementById('fileImport').files[0];
+    if(!file){ toast('Pilih file cadangan terlebih dahulu.'); return; }
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const data = JSON.parse(e.target.result);
+        DB = {...structuredClone(defaultDB), ...data};
+        saveDB(); toast('Data berhasil dipulihkan.'); render();
+      }catch(err){ toast('File cadangan tidak valid.'); }
+    };
+    reader.readAsText(file);
+  });
+  const btnResetAll = document.getElementById('btnResetAll');
+  if(btnResetAll) btnResetAll.addEventListener('click', ()=>{
+    if(confirm('Yakin ingin menghapus SEMUA data? Tindakan ini tidak bisa dibatalkan.')){
+      DB = structuredClone(defaultDB); saveDB(); toast('Semua data telah dihapus.'); render();
+    }
+  });
+}
+
+/* ============ IMPORTIR RPD/RKAS & BKU (Excel/CSV) ============ */
+const BULAN_ID = {januari:0,februari:1,maret:2,april:3,mei:4,juni:5,juli:6,agustus:7,september:8,oktober:9,november:10,desember:11};
+function parseIndoDate(val){
+  if(val==null || val==='') return '';
+  if(typeof val === 'number'){ // Excel serial date
+    const d = XLSX.SSF.parse_date_code(val);
+    if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  const s = String(val).trim().toLowerCase();
+  const m = s.match(/(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+  if(m){
+    const day = m[1].padStart(2,'0');
+    const bln = BULAN_ID[m[2]];
+    if(bln!=null) return `${m[3]}-${String(bln+1).padStart(2,'0')}-${day}`;
+  }
+  const m2 = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+  const m3 = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(m3) return `${m3[3]}-${m3[2].padStart(2,'0')}-${m3[1].padStart(2,'0')}`;
+  return '';
+}
+function toNumber(v){
+  if(v==null || v==='') return 0;
+  if(typeof v === 'number') return v;
+  const s = String(v).replace(/[^\d,.\-]/g,'').replace(/\./g,'').replace(/,/g,'.');
+  const n = parseFloat(s);
+  return isNaN(n)?0:n;
+}
+function readSheetRows(file, cb){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const wb = XLSX.read(e.target.result, {type:'binary', cellDates:false});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, raw:true, defval:''});
+    cb(rows);
+  };
+  reader.readAsBinaryString(file);
+}
+function findHeaderRow(rows, keywordSets){
+  let bestIdx = 0, bestScore = -1;
+  for(let i=0;i<Math.min(rows.length,8);i++){
+    const rowText = rows[i].map(c=>String(c||'').toLowerCase().trim());
+    let score = 0;
+    keywordSets.forEach(kw=>{ if(rowText.some(c=>c.includes(kw))) score++; });
+    if(score > bestScore){ bestScore = score; bestIdx = i; }
+  }
+  return bestIdx;
+}
+function colIndexFor(headerRow, aliases){
+  const norm = headerRow.map(c=>String(c||'').toLowerCase().trim());
+  for(const a of aliases){
+    const idx = norm.findIndex(c=> c.includes(a));
+    if(idx !== -1) return idx;
+  }
+  return -1;
+}
+
+function importRkasFile(file){
+  readSheetRows(file, rows=>{
+    const hIdx = findHeaderRow(rows, ['kode rekening','uraian','vol','harga satuan','jumlah']);
+    const header = rows[hIdx];
+    const dataRows = rows.slice(hIdx+1).filter(r=> r.some(c=>String(c||'').trim()!==''));
+
+    const cKode = colIndexFor(header,['kode rekening']);
+    const cUraian = colIndexFor(header,['uraian']);
+    const cVol = colIndexFor(header,['vol']);
+    const cSatuan = colIndexFor(header,['satuan']);
+    const cHarga = colIndexFor(header,['harga satuan']);
+    const cJumlah = colIndexFor(header,['jumlah']);
+    const cTw1 = colIndexFor(header,['triwulan 1']);
+    const cTw2 = colIndexFor(header,['triwulan 2']);
+    const cTw3 = colIndexFor(header,['triwulan 3']);
+    const cTw4 = colIndexFor(header,['triwulan 4']);
+    const hasTriwulan = cTw1!==-1 || cTw2!==-1 || cTw3!==-1 || cTw4!==-1;
+
+    let count = 0;
+    dataRows.forEach(r=>{
+      const kode = cKode!==-1? String(r[cKode]||'').trim() : '';
+      const uraian = cUraian!==-1? String(r[cUraian]||'').trim() : '';
+      if(!kode && !uraian) return;
+      const volume = cVol!==-1? toNumber(r[cVol]) : 1;
+      const satuan = cSatuan!==-1? String(r[cSatuan]||'').trim() : '';
+      const harga = cHarga!==-1? toNumber(r[cHarga]) : 0;
+      const totalJumlah = cJumlah!==-1? toNumber(r[cJumlah]) : volume*harga;
+
+      if(hasTriwulan){
+        const twPercents = [
+          {label:'I', val:cTw1!==-1? toNumber(r[cTw1]):0},
+          {label:'II', val:cTw2!==-1? toNumber(r[cTw2]):0},
+          {label:'III', val:cTw3!==-1? toNumber(r[cTw3]):0},
+          {label:'IV', val:cTw4!==-1? toNumber(r[cTw4]):0}
+        ].filter(t=>t.val>0);
+        if(twPercents.length===0){
+          DB.rkas.push({id:uid(),kode,uraian,sumber:'BOS Reguler',volume,satuan,harga,jumlah:totalJumlah,triwulan:'I'});
+          count++;
+        } else {
+          twPercents.forEach(t=>{
+            const pct = t.val<=1? t.val*100 : t.val; // handle 0.5 or 50
+            DB.rkas.push({id:uid(),kode,uraian,sumber:'BOS Reguler',volume,satuan,harga,jumlah:Math.round(totalJumlah*pct/100),triwulan:t.label});
+            count++;
+          });
+        }
+      } else {
+        DB.rkas.push({id:uid(),kode,uraian,sumber:'BOS Reguler',volume,satuan,harga,jumlah:totalJumlah,triwulan:'I'});
+        count++;
+      }
+    });
+    saveDB();
+    document.getElementById('importRkasStatus').textContent = `Berhasil impor ${count} baris RKAS.`;
+    toast(`Impor RKAS selesai: ${count} baris ditambahkan.`);
+    render();
+  });
+}
+
+function importBkuFile(file){
+  readSheetRows(file, rows=>{
+    const hIdx = findHeaderRow(rows, ['tanggal','uraian','penerimaan','pengeluaran']);
+    const header = rows[hIdx];
+    const dataRows = rows.slice(hIdx+1).filter(r=> r.some(c=>String(c||'').trim()!==''));
+
+    const cTgl = colIndexFor(header,['tanggal']);
+    const cBukti = colIndexFor(header,['no bukti','no. bukti','nomor bukti']);
+    const cKode = colIndexFor(header,['kode rekening']);
+    const cUraian = colIndexFor(header,['uraian']);
+    const cMasuk = colIndexFor(header,['penerimaan']);
+    const cKeluar = colIndexFor(header,['pengeluaran']);
+    const cPenerima = colIndexFor(header,['penerima']);
+
+    let count = 0, skipped = 0;
+    dataRows.forEach(r=>{
+      const uraian = cUraian!==-1? String(r[cUraian]||'').trim() : '';
+      const masuk = cMasuk!==-1? toNumber(r[cMasuk]) : 0;
+      const keluar = cKeluar!==-1? toNumber(r[cKeluar]) : 0;
+      if(!uraian || (masuk===0 && keluar===0)){ skipped++; return; }
+      const tanggal = cTgl!==-1? parseIndoDate(r[cTgl]) : '';
+      const uraianLower = uraian.toLowerCase();
+      let metode = 'tunai';
+      if(uraianLower.includes('bank') || uraianLower.includes('transfer')) metode = 'bank';
+      const tipe = masuk>0 ? 'masuk' : 'keluar';
+      const bruto = masuk>0 ? masuk : keluar;
+      DB.transaksi.push({
+        id:uid(), tanggal, noBukti: cBukti!==-1? String(r[cBukti]||'').trim(): '', uraian,
+        kodeRekening: cKode!==-1? String(r[cKode]||'').trim(): '',
+        jenisPembayaran: metode, tipe, jumlahBruto: bruto,
+        pajak:{jenis:'Tidak dipungut', persen:0, nominal:0},
+        jumlahNetto: bruto,
+        penerima: cPenerima!==-1? String(r[cPenerima]||'').trim(): ''
+      });
+      count++;
+    });
+    saveDB();
+    document.getElementById('importBkuStatus').textContent = `Berhasil impor ${count} transaksi BKU. (${skipped} baris dilewati karena kosong)`;
+    toast(`Impor BKU selesai: ${count} transaksi ditambahkan.`);
+    render();
+  });
+}
+
+function downloadFile(filename, content, type){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
 </body>
 </html>
