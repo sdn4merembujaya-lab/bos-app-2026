@@ -143,7 +143,7 @@
 /* ============ DATA LAYER (localStorage) ============ */
 const DB_KEY = 'siperbos_v2';
 const defaultDB = {
-  profil:{ namaSekolah:'SD NEGERI 4 MEREMBU', npsn:'', alamat:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
+  profil:{ namaSekolah:'SD NEGERI 4 MEREMBUJAYA', npsn:'', alamat:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
   penerimaan: [],
   rkas: [],
   transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,namaRekening,programKegiatanSNP,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto,penerima}
@@ -177,6 +177,7 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 function fmtRp(n){ n = Number(n)||0; return 'Rp ' + n.toLocaleString('id-ID'); }
 function fmtDate(d){ if(!d) return '-'; const dt = new Date(d); return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function optSel(val, current){ return val===current ? ' selected' : ''; }
 
 /* Preset jenis kegiatan -> jenis pajak & persentase (acuan umum, bisa disesuaikan) */
 const PAJAK_PRESET = {
@@ -224,6 +225,11 @@ const NAV = [
   ]}
 ];
 let currentPage = 'dasbor';
+let penerimaanEditingId = null;
+let rkasEditingId = null;
+let transaksiEditingId = null;
+let sppdEditingId = null;
+let suratTugasEditingId = null;
 
 function renderNav(){
   const nav = document.getElementById('navlist');
@@ -398,28 +404,37 @@ function pageProfil(){
 /* ============ PENERIMAAN ============ */
 function pagePenerimaan(){
   const rows = DB.penerimaan;
+  const editing = penerimaanEditingId ? rows.find(r=>r.id===penerimaanEditingId) : null;
   return `
   ${head('Data Dasar','Penerimaan Dana','Catat setiap pencairan dana BOS per tahap/triwulan.')}
   <div class="card">
-    <h2>Tambah Penerimaan</h2>
+    <h2>${editing?'Edit Penerimaan':'Tambah Penerimaan'}</h2>
     <div class="row">
-      <div class="field"><label>Tanggal</label><input type="date" id="p_tanggal"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="p_tanggal" value="${editing?editing.tanggal:''}"></div>
       <div class="field"><label>Sumber Dana</label>
-        <select id="p_sumber"><option>BOS Reguler</option><option>BOS Kinerja</option><option>BOP Kesetaraan</option><option>Sumber Lain</option></select>
+        <select id="p_sumber">
+          <option${optSel('BOS Reguler', editing?editing.sumber:'')}>BOS Reguler</option>
+          <option${optSel('BOS Kinerja', editing?editing.sumber:'')}>BOS Kinerja</option>
+          <option${optSel('BOP Kesetaraan', editing?editing.sumber:'')}>BOP Kesetaraan</option>
+          <option${optSel('Sumber Lain', editing?editing.sumber:'')}>Sumber Lain</option>
+        </select>
       </div>
       <div class="field"><label>Tahap/Triwulan</label>
-        <select id="p_tahap"><option>Tahap I</option><option>Tahap II</option><option>Tahap III</option><option>Triwulan I</option><option>Triwulan II</option><option>Triwulan III</option><option>Triwulan IV</option></select>
+        <select id="p_tahap">
+          ${['Tahap I','Tahap II','Tahap III','Triwulan I','Triwulan II','Triwulan III','Triwulan IV'].map(o=>`<option${optSel(o, editing?editing.tahap:'')}>${o}</option>`).join('')}
+        </select>
       </div>
-      <div class="field"><label>Jumlah (Rp)</label><input type="number" id="p_jumlah" placeholder="0"></div>
+      <div class="field"><label>Jumlah (Rp)</label><input type="number" id="p_jumlah" placeholder="0" value="${editing?editing.jumlah:''}"></div>
     </div>
-    <div class="field"><label>Keterangan</label><input id="p_ket" placeholder="mis. transfer dari rekening kas daerah"></div>
-    <button class="btn gold" id="btnAddPenerimaan">Simpan Penerimaan</button>
+    <div class="field"><label>Keterangan</label><input id="p_ket" placeholder="mis. transfer dari rekening kas daerah" value="${editing?(editing.ket||''):''}"></div>
+    <button class="btn gold" id="btnAddPenerimaan">${editing?'Perbarui Penerimaan':'Simpan Penerimaan'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelPenerimaan">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Riwayat Penerimaan</h2>
     ${rows.length===0?'<div class="empty">Belum ada data penerimaan.</div>':`
     <table><thead><tr><th>Tanggal</th><th>Sumber Dana</th><th>Tahap</th><th>Keterangan</th><th class="num">Jumlah</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${fmtDate(r.tanggal)}</td><td>${r.sumber}</td><td>${r.tahap}</td><td>${r.ket||'-'}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="no-print"><button class="btn danger" data-del-penerimaan="${r.id}">Hapus</button></td></tr>`).join('')}</tbody>
+    <tbody>${rows.map(r=>`<tr><td>${fmtDate(r.tanggal)}</td><td>${r.sumber}</td><td>${r.tahap}</td><td>${r.ket||'-'}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="no-print"><button class="btn sm outline" data-edit-penerimaan="${r.id}">Edit</button> <button class="btn danger" data-del-penerimaan="${r.id}">Hapus</button></td></tr>`).join('')}</tbody>
     <tfoot><tr><td colspan="4"><b>Total</b></td><td class="num"><b>${fmtRp(rows.reduce((s,r)=>s+Number(r.jumlah||0),0))}</b></td><td></td></tr></tfoot></table>`}
   </div>`;
 }
@@ -427,7 +442,8 @@ function pagePenerimaan(){
 /* ============ RKAS ============ */
 function pageRkas(){
   const rows = DB.rkas;
-  const standarOpt = STANDAR_SNP.map(s=>`<option>${s}</option>`).join('');
+  const editing = rkasEditingId ? rows.find(r=>r.id===rkasEditingId) : null;
+  const standarOpt = STANDAR_SNP.map(s=>`<option${optSel(s, editing?editing.programKegiatanSNP:'')}>${s}</option>`).join('');
   const totalJumlah = rows.reduce((s,r)=>s+Number(r.jumlah||0),0);
   const totalRealisasi = rows.reduce((s,r)=>s+realisasiForKode(r.kode),0);
   return `
@@ -441,29 +457,34 @@ function pageRkas(){
     <div id="importRkasStatus" class="hint"></div>
   </div>
   <div class="card">
-    <h2>Tambah Rincian RKAS</h2>
+    <h2>${editing?'Edit Rincian RKAS':'Tambah Rincian RKAS'}</h2>
     <div class="row">
-      <div class="field"><label>Kode Rekening</label><input id="r_kode" placeholder="mis. 5.1.02.01.01.0036"></div>
-      <div class="field"><label>Nama Referensi (nama rekening belanja)</label><input id="r_namaReferensi" placeholder="mis. Belanja Alat/Bahan untuk Kegiatan Kantor"></div>
+      <div class="field"><label>Kode Rekening</label><input id="r_kode" placeholder="mis. 5.1.02.01.01.0036" value="${editing?editing.kode:''}"></div>
+      <div class="field"><label>Nama Referensi (nama rekening belanja)</label><input id="r_namaReferensi" placeholder="mis. Belanja Alat/Bahan untuk Kegiatan Kantor" value="${editing?(editing.namaReferensi||''):''}"></div>
       <div class="field"><label>Program Kegiatan SNP</label><select id="r_programSNP">${standarOpt}</select></div>
     </div>
-    <div class="field"><label>Uraian Kegiatan</label><input id="r_uraian" placeholder="mis. Pembelian ATK"></div>
+    <div class="field"><label>Uraian Kegiatan</label><input id="r_uraian" placeholder="mis. Pembelian ATK" value="${editing?editing.uraian:''}"></div>
     <div class="row">
       <div class="field"><label>Sumber Dana</label>
-        <select id="r_sumber"><option>BOS Reguler</option><option>BOS Kinerja</option><option>BOP Kesetaraan</option></select>
+        <select id="r_sumber">
+          <option${optSel('BOS Reguler', editing?editing.sumber:'')}>BOS Reguler</option>
+          <option${optSel('BOS Kinerja', editing?editing.sumber:'')}>BOS Kinerja</option>
+          <option${optSel('BOP Kesetaraan', editing?editing.sumber:'')}>BOP Kesetaraan</option>
+        </select>
       </div>
-      <div class="field"><label>Volume</label><input type="number" id="r_volume" value="1"></div>
-      <div class="field"><label>Satuan</label><input id="r_satuan" placeholder="paket/bulan/orang"></div>
-      <div class="field"><label>Harga Satuan (Rp)</label><input type="number" id="r_harga" placeholder="0"></div>
+      <div class="field"><label>Volume</label><input type="number" id="r_volume" value="${editing?editing.volume:1}"></div>
+      <div class="field"><label>Satuan</label><input id="r_satuan" placeholder="paket/bulan/orang" value="${editing?(editing.satuan||''):''}"></div>
+      <div class="field"><label>Harga Satuan (Rp)</label><input type="number" id="r_harga" placeholder="0" value="${editing?editing.harga:''}"></div>
     </div>
     <p class="hint">Rencana pencairan per triwulan (opsional, dalam %). Total idealnya 100%.</p>
     <div class="row">
-      <div class="field"><label>Tahap I · Triwulan 1 (%)</label><input type="number" id="r_tw1" placeholder="0" step="0.1"></div>
-      <div class="field"><label>Tahap I · Triwulan 2 (%)</label><input type="number" id="r_tw2" placeholder="0" step="0.1"></div>
-      <div class="field"><label>Tahap II · Triwulan 3 (%)</label><input type="number" id="r_tw3" placeholder="0" step="0.1"></div>
-      <div class="field"><label>Tahap II · Triwulan 4 (%)</label><input type="number" id="r_tw4" placeholder="0" step="0.1"></div>
+      <div class="field"><label>Tahap I · Triwulan 1 (%)</label><input type="number" id="r_tw1" placeholder="0" step="0.1" value="${editing?(editing.tw1Pct||''):''}"></div>
+      <div class="field"><label>Tahap I · Triwulan 2 (%)</label><input type="number" id="r_tw2" placeholder="0" step="0.1" value="${editing?(editing.tw2Pct||''):''}"></div>
+      <div class="field"><label>Tahap II · Triwulan 3 (%)</label><input type="number" id="r_tw3" placeholder="0" step="0.1" value="${editing?(editing.tw3Pct||''):''}"></div>
+      <div class="field"><label>Tahap II · Triwulan 4 (%)</label><input type="number" id="r_tw4" placeholder="0" step="0.1" value="${editing?(editing.tw4Pct||''):''}"></div>
     </div>
-    <button class="btn gold" id="btnAddRkas">Simpan RKAS</button>
+    <button class="btn gold" id="btnAddRkas">${editing?'Perbarui RKAS':'Simpan RKAS'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelRkas">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Daftar RKAS</h2>
@@ -473,7 +494,7 @@ function pageRkas(){
     <tbody>${rows.map(r=>{
       const real = realisasiForKode(r.kode);
       const sisa = Number(r.jumlah||0)-real;
-      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="num">${fmtRp(twAmt(r,1))}</td><td class="num">${fmtRp(twAmt(r,2))}</td><td class="num">${fmtRp(twAmt(r,3))}</td><td class="num">${fmtRp(twAmt(r,4))}</td><td class="num">${fmtRp(real)}</td><td class="num">${fmtRp(sisa)}</td><td class="no-print"><button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
+      return `<tr><td class="mono">${r.kode}</td><td>${r.namaReferensi||'-'}</td><td>${r.programKegiatanSNP||'-'}</td><td>${r.uraian}</td><td class="num">${r.volume}</td><td>${r.satuan}</td><td class="num">${fmtRp(r.harga)}</td><td class="num">${fmtRp(r.jumlah)}</td><td class="num">${fmtRp(twAmt(r,1))}</td><td class="num">${fmtRp(twAmt(r,2))}</td><td class="num">${fmtRp(twAmt(r,3))}</td><td class="num">${fmtRp(twAmt(r,4))}</td><td class="num">${fmtRp(real)}</td><td class="num">${fmtRp(sisa)}</td><td class="no-print"><button class="btn sm outline" data-edit-rkas="${r.id}">Edit</button> <button class="btn danger" data-del-rkas="${r.id}">Hapus</button></td></tr>`;
     }).join('')}</tbody>
     <tfoot><tr><td colspan="7"><b>Total Anggaran</b></td><td class="num"><b>${fmtRp(totalJumlah)}</b></td><td colspan="4"></td><td class="num"><b>${fmtRp(totalRealisasi)}</b></td><td class="num"><b>${fmtRp(totalJumlah-totalRealisasi)}</b></td><td></td></tr></tfoot></table>
     </div>`}
@@ -483,6 +504,7 @@ function pageRkas(){
 /* ============ BKU ============ */
 function pageBKU(){
   const rows = [...DB.transaksi].sort((a,b)=> new Date(a.tanggal)-new Date(b.tanggal));
+  const editing = transaksiEditingId ? DB.transaksi.find(t=>t.id===transaksiEditingId) : null;
   let saldo = 0;
   const rowsHtml = rows.map(t=>{
     saldo += (t.tipe==='masuk'? Number(t.jumlahNetto||0) : -Number(t.jumlahNetto||0));
@@ -494,12 +516,16 @@ function pageBKU(){
       <td class="num">${t.tipe==='keluar'?fmtRp(t.jumlahBruto):'-'}</td>
       <td class="num">${t.pajak && t.pajak.nominal? fmtRp(t.pajak.nominal)+' ('+t.pajak.jenis+')':'-'}</td>
       <td class="num">${fmtRp(saldo)}</td>
-      <td class="no-print"><button class="btn danger" data-del-transaksi="${t.id}">Hapus</button></td>
+      <td class="no-print"><button class="btn sm outline" data-edit-transaksi="${t.id}">Edit</button> <button class="btn danger" data-del-transaksi="${t.id}">Hapus</button></td>
     </tr>`;
   }).join('');
 
-  const rkasOptions = DB.rkas.map(r=>`<option value="${r.kode}">${r.kode} — ${r.uraian}</option>`).join('');
-  const presetOptions = Object.keys(PAJAK_PRESET).map(k=>`<option value="${k}">${k}</option>`).join('');
+  const rkasOptions = DB.rkas.map(r=>`<option value="${r.kode}"${optSel(r.kode, editing?editing.kodeRekening:'')}>${r.kode} — ${r.uraian}</option>`).join('');
+  let presetKeySelected = '';
+  if(editing && editing.pajak){
+    presetKeySelected = Object.keys(PAJAK_PRESET).find(k=> PAJAK_PRESET[k].jenis===editing.pajak.jenis && PAJAK_PRESET[k].persen===editing.pajak.persen) || 'Lainnya (manual)';
+  }
+  const presetOptions = Object.keys(PAJAK_PRESET).map(k=>`<option value="${k}"${optSel(k, presetKeySelected)}>${k}</option>`).join('');
 
   return `
   ${head('Penatausahaan','Buku Kas Umum (BKU)','Semua transaksi kas masuk & keluar, pajak dihitung otomatis berdasarkan jenis kegiatan.')}
@@ -512,18 +538,24 @@ function pageBKU(){
     <div id="importBkuStatus" class="hint"></div>
   </div>
   <div class="card">
-    <h2>Input Transaksi</h2>
+    <h2>${editing?'Edit Transaksi':'Input Transaksi'}</h2>
     <div class="row">
-      <div class="field"><label>Tanggal</label><input type="date" id="t_tanggal"></div>
-      <div class="field"><label>No. Bukti</label><input id="t_bukti" placeholder="BPU-001"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="t_tanggal" value="${editing?editing.tanggal:''}"></div>
+      <div class="field"><label>No. Bukti</label><input id="t_bukti" placeholder="BPU-001" value="${editing?(editing.noBukti||''):''}"></div>
       <div class="field"><label>Tipe</label>
-        <select id="t_tipe"><option value="keluar">Pengeluaran</option><option value="masuk">Penerimaan (non-dana awal)</option></select>
+        <select id="t_tipe">
+          <option value="keluar"${optSel('keluar', editing?editing.tipe:'keluar')}>Pengeluaran</option>
+          <option value="masuk"${optSel('masuk', editing?editing.tipe:'keluar')}>Penerimaan (non-dana awal)</option>
+        </select>
       </div>
       <div class="field"><label>Metode</label>
-        <select id="t_metode"><option value="tunai">Tunai</option><option value="bank">Bank</option></select>
+        <select id="t_metode">
+          <option value="tunai"${optSel('tunai', editing?editing.jenisPembayaran:'tunai')}>Tunai</option>
+          <option value="bank"${optSel('bank', editing?editing.jenisPembayaran:'tunai')}>Bank</option>
+        </select>
       </div>
     </div>
-    <div class="field"><label>Uraian</label><input id="t_uraian" placeholder="mis. Pembelian ATK bulan Agustus"></div>
+    <div class="field"><label>Uraian</label><input id="t_uraian" placeholder="mis. Pembelian ATK bulan Agustus" value="${editing?editing.uraian:''}"></div>
     <div class="row">
       <div class="field"><label>Kode Rekening (RKAS)</label>
         <select id="t_kode"><option value="">— pilih (opsional) —</option>${rkasOptions}</select>
@@ -533,13 +565,14 @@ function pageBKU(){
       </div>
     </div>
     <div class="row">
-      <div class="field"><label>Jumlah Bruto (Rp)</label><input type="number" id="t_jumlah" placeholder="0"></div>
-      <div class="field"><label>Persentase Pajak Manual (%)</label><input type="number" id="t_pajakManual" placeholder="isi jika pilih 'Lainnya (manual)'" step="0.1"></div>
-      <div class="field"><label>Penerima / Dibayarkan Kepada</label><input id="t_penerima" placeholder="nama toko/perorangan"></div>
+      <div class="field"><label>Jumlah Bruto (Rp)</label><input type="number" id="t_jumlah" placeholder="0" value="${editing?editing.jumlahBruto:''}"></div>
+      <div class="field"><label>Persentase Pajak Manual (%)</label><input type="number" id="t_pajakManual" placeholder="isi jika pilih 'Lainnya (manual)'" step="0.1" value="${editing&&editing.pajak?editing.pajak.persen:''}"></div>
+      <div class="field"><label>Penerima / Dibayarkan Kepada</label><input id="t_penerima" placeholder="nama toko/perorangan" value="${editing?(editing.penerima||''):''}"></div>
     </div>
     <div class="hint" id="t_pajakPreview">Nominal pajak akan dihitung otomatis saat disimpan.</div>
     <br>
-    <button class="btn gold" id="btnAddTransaksi">Simpan Transaksi</button>
+    <button class="btn gold" id="btnAddTransaksi">${editing?'Perbarui Transaksi':'Simpan Transaksi'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelTransaksi">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Rekap Buku Kas Umum</h2>
@@ -643,6 +676,8 @@ function letterheadFull(){
 
 /* ============ DOKUMEN (Kwitansi, Nota Pesanan, SPPD, Surat Tugas) ============ */
 let dokumenTab = 'kwitansi';
+let kwitansiEditingId = null;
+let notaEditingId = null;
 function pageDokumen(){
   const tabs = [
     {id:'kwitansi', label:'Kwitansi'},
@@ -662,31 +697,44 @@ function pageDokumen(){
 
 function renderKwitansiTab(){
   const rows = DB.kwitansi;
-  const rkasOpt = DB.rkas.map(r=>`<option value="${r.kode}">${r.kode} — ${r.uraian}</option>`).join('');
+  const editing = kwitansiEditingId ? rows.find(k=>k.id===kwitansiEditingId) : null;
+  const rkasOpt = DB.rkas.map(r=>`<option value="${r.kode}"${optSel(r.kode, editing?editing.kodeRekening:'')}>${r.kode} — ${r.uraian}</option>`).join('');
+  const bkuKeluar = DB.transaksi.filter(t=>t.tipe==='keluar').sort((a,b)=> new Date(b.tanggal)-new Date(a.tanggal));
+  const belumAdaKwitansi = bkuKeluar.filter(t=> !DB.kwitansi.some(k=>k.sourceBkuId===t.id));
+  const bkuOptions = bkuKeluar.map(t=>`<option value="${t.id}">${fmtDate(t.tanggal)} — ${t.noBukti||'(tanpa no.bukti)'} — ${t.uraian} — ${fmtRp(t.jumlahBruto)}</option>`).join('');
   return `
+  <div class="card no-print">
+    <h2>Buat Otomatis dari Transaksi BKU</h2>
+    <p class="hint">Kwitansi bisa diisi langsung dari data yang sudah ada di Buku Kas Umum (tanggal, kode rekening, uraian, jumlah, penerima) tanpa mengetik ulang.</p>
+    <div class="field"><label>Pilih Transaksi Pengeluaran BKU</label><select id="k_fromBku"><option value="">— pilih transaksi —</option>${bkuOptions}</select></div>
+    <button class="btn outline" id="btnFillKwitansiFromBku">Isi Form dari Transaksi Ini</button>
+    <button class="btn outline" id="btnAutoKwitansiAll">Buat Otomatis untuk Semua Transaksi Belum Ada Kwitansi (${belumAdaKwitansi.length})</button>
+  </div>
   <div class="card">
-    <h2>Buat Kwitansi Baru</h2>
+    <h2>${editing?'Edit Kwitansi':'Buat Kwitansi Baru'}</h2>
     <div class="row">
-      <div class="field"><label>No. Bukti</label><input id="k_nomor" placeholder="024/BKU/SDN 4 MEREMBU/TAHAP 1/2026"></div>
-      <div class="field"><label>Tanggal</label><input type="date" id="k_tanggal"></div>
+      <div class="field"><label>No. Bukti</label><input id="k_nomor" placeholder="024/BKU/SDN 4 MEREMBU/TAHAP 1/2026" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="k_tanggal" value="${editing?editing.tanggal:''}"></div>
     </div>
     <div class="row">
-      <div class="field"><label>Kode Kegiatan</label><input id="k_kodeKegiatan" placeholder="mis. 0055"></div>
+      <div class="field"><label>Kode Kegiatan</label><input id="k_kodeKegiatan" placeholder="mis. 0055" value="${editing?(editing.kodeKegiatan||''):''}"></div>
       <div class="field"><label>Kode Rekening</label><select id="k_kodeRekening"><option value="">— pilih (opsional) —</option>${rkasOpt}</select></div>
     </div>
-    <div class="field"><label>Telah diterima dari</label><input id="k_dari" value="Bendahara BOSP ${DB.profil.namaSekolah||''}"></div>
-    <div class="field"><label>Guna membayar</label><input id="k_untuk" placeholder="mis. Bayar Sampul Raport Kelas I"></div>
+    <div class="field"><label>Telah diterima dari</label><input id="k_dari" value="${editing?editing.dari:'Bendahara BOSP '+(DB.profil.namaSekolah||'')}"></div>
+    <div class="field"><label>Guna membayar</label><input id="k_untuk" placeholder="mis. Bayar Sampul Raport Kelas I" value="${editing?editing.untuk:''}"></div>
     <div class="row">
-      <div class="field"><label>Jumlah (Rp)</label><input type="number" id="k_jumlah" placeholder="0"></div>
-      <div class="field"><label>Nama Penerima</label><input id="k_penerima" placeholder="Nama toko/perorangan"></div>
+      <div class="field"><label>Jumlah (Rp)</label><input type="number" id="k_jumlah" placeholder="0" value="${editing?editing.jumlah:''}"></div>
+      <div class="field"><label>Nama Penerima</label><input id="k_penerima" placeholder="Nama toko/perorangan" value="${editing?(editing.penerima||''):''}"></div>
     </div>
-    <button class="btn gold" id="btnAddKwitansi">Simpan Kwitansi</button>
+    <input type="hidden" id="k_sourceBkuId" value="${editing?(editing.sourceBkuId||''):''}">
+    <button class="btn gold" id="btnAddKwitansi">${editing?'Perbarui Kwitansi':'Simpan Kwitansi'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelKwitansi">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Daftar Kwitansi</h2>
     ${rows.length===0?'<div class="empty">Belum ada kwitansi.</div>':`
     <table><thead><tr><th>No. Bukti</th><th>Tanggal</th><th>Guna Membayar</th><th>Penerima</th><th class="num">Jumlah</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(k=>`<tr><td class="mono">${k.nomor}</td><td>${fmtDate(k.tanggal)}</td><td>${k.untuk}</td><td>${k.penerima}</td><td class="num">${fmtRp(k.jumlah)}</td><td class="no-print"><button class="btn sm outline" data-print-kwitansi="${k.id}">Cetak</button> <button class="btn danger" data-del-kwitansi="${k.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+    <tbody>${rows.map(k=>`<tr><td class="mono">${k.nomor}</td><td>${fmtDate(k.tanggal)}</td><td>${k.untuk}</td><td>${k.penerima}</td><td class="num">${fmtRp(k.jumlah)}</td><td class="no-print"><button class="btn sm outline" data-print-kwitansi="${k.id}">Cetak</button> <button class="btn sm outline" data-edit-kwitansi="${k.id}">Edit</button> <button class="btn danger" data-del-kwitansi="${k.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
   </div>`;
 }
 function printKwitansi(k){
@@ -726,24 +774,38 @@ function printKwitansi(k){
 
 function renderNotaTab(){
   const rows = DB.notaPesanan;
+  const editing = notaEditingId ? rows.find(n=>n.id===notaEditingId) : null;
+  const rkasBelum = DB.rkas.filter(r=> !DB.notaPesanan.some(n=> (n.sourceRkasIds||[]).includes(r.id)));
+  const rkasOptions = DB.rkas.map(r=>`<option value="${r.id}">${r.kode} — ${r.uraian} (${r.volume} ${r.satuan} × ${fmtRp(r.harga)})</option>`).join('');
   return `
+  <div class="card no-print">
+    <h2>Isi Otomatis dari RKAS/RPD</h2>
+    <p class="hint">Item nota bisa diambil langsung dari rincian RKAS/RPD (nama barang, volume, satuan, harga satuan) tanpa mengetik ulang.</p>
+    <div class="field"><label>Pilih Rincian RKAS (bisa lebih dari satu, tahan Ctrl/Cmd untuk memilih banyak)</label>
+      <select id="n_fromRkas" multiple size="6">${rkasOptions}</select>
+    </div>
+    <button class="btn outline" id="btnFillNotaFromRkas">Tambahkan sebagai Item Nota</button>
+    <button class="btn outline" id="btnAutoNotaAll">Buat Nota Otomatis per Item RKAS Tersisa (${rkasBelum.length})</button>
+  </div>
   <div class="card">
-    <h2>Buat Nota Pesanan Baru</h2>
+    <h2>${editing?'Edit Nota Pesanan':'Buat Nota Pesanan Baru'}</h2>
     <div class="row">
-      <div class="field"><label>Nomor</label><input id="n_nomor" placeholder="mis. 012/NP/VIII/2026"></div>
-      <div class="field"><label>Tanggal</label><input type="date" id="n_tanggal"></div>
+      <div class="field"><label>Nomor</label><input id="n_nomor" placeholder="mis. 012/NP/VIII/2026" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="n_tanggal" value="${editing?editing.tanggal:''}"></div>
     </div>
-    <div class="field"><label>Kepada (nama toko/penyedia)</label><input id="n_kepada" placeholder="Toko ABC"></div>
+    <div class="field"><label>Kepada (nama toko/penyedia)</label><input id="n_kepada" placeholder="Toko ABC" value="${editing?editing.kepada:''}"></div>
     <div class="field"><label>Daftar barang (satu baris per barang, format: nama | jumlah | satuan | harga satuan)</label>
-      <textarea id="n_items" rows="4" placeholder="Kertas HVS | 10 | rim | 55000&#10;Spidol Boardmarker | 5 | buah | 12000"></textarea>
+      <textarea id="n_items" rows="4" placeholder="Kertas HVS | 10 | rim | 55000&#10;Spidol Boardmarker | 5 | buah | 12000">${editing?editing.items.map(i=>`${i.nama} | ${i.jumlah} | ${i.satuan} | ${i.harga}`).join('\n'):''}</textarea>
     </div>
-    <button class="btn gold" id="btnAddNota">Simpan Nota Pesanan</button>
+    <input type="hidden" id="n_sourceRkasIds" value="${editing?(editing.sourceRkasIds||[]).join(','):''}">
+    <button class="btn gold" id="btnAddNota">${editing?'Perbarui Nota Pesanan':'Simpan Nota Pesanan'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelNota">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Daftar Nota Pesanan</h2>
     ${rows.length===0?'<div class="empty">Belum ada nota pesanan.</div>':`
     <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Kepada</th><th class="num">Total</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(n=>`<tr><td class="mono">${n.nomor}</td><td>${fmtDate(n.tanggal)}</td><td>${n.kepada}</td><td class="num">${fmtRp(n.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="no-print"><button class="btn sm outline" data-print-nota="${n.id}">Cetak</button> <button class="btn danger" data-del-nota="${n.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+    <tbody>${rows.map(n=>`<tr><td class="mono">${n.nomor}</td><td>${fmtDate(n.tanggal)}</td><td>${n.kepada}</td><td class="num">${fmtRp(n.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="no-print"><button class="btn sm outline" data-print-nota="${n.id}">Cetak</button> <button class="btn sm outline" data-edit-nota="${n.id}">Edit</button> <button class="btn danger" data-del-nota="${n.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
   </div>`;
 }
 function printNota(n){
@@ -770,34 +832,36 @@ function printNota(n){
 
 function renderSppdTab(){
   const rows = DB.sppd;
+  const editing = sppdEditingId ? rows.find(s=>s.id===sppdEditingId) : null;
   return `
   <div class="card">
-    <h2>Buat SPPD Baru</h2>
+    <h2>${editing?'Edit SPPD':'Buat SPPD Baru'}</h2>
     <div class="row">
-      <div class="field"><label>Nomor SPPD</label><input id="s_nomor" placeholder="mis. 008/SPPD/VIII/2026"></div>
-      <div class="field"><label>Tanggal Diterbitkan</label><input type="date" id="s_tanggal"></div>
+      <div class="field"><label>Nomor SPPD</label><input id="s_nomor" placeholder="mis. 008/SPPD/VIII/2026" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal Diterbitkan</label><input type="date" id="s_tanggal" value="${editing?editing.tanggal:''}"></div>
     </div>
     <div class="row">
-      <div class="field"><label>Nama Pegawai</label><input id="s_nama" placeholder="mis. Maemunah, S.Pd"></div>
-      <div class="field"><label>NIP</label><input id="s_nip"></div>
-      <div class="field"><label>Jabatan</label><input id="s_jabatan" placeholder="Bendahara BOSP"></div>
+      <div class="field"><label>Nama Pegawai</label><input id="s_nama" placeholder="mis. Maemunah, S.Pd" value="${editing?editing.nama:''}"></div>
+      <div class="field"><label>NIP</label><input id="s_nip" value="${editing?(editing.nip||''):''}"></div>
+      <div class="field"><label>Jabatan</label><input id="s_jabatan" placeholder="Bendahara BOSP" value="${editing?(editing.jabatan||''):''}"></div>
     </div>
-    <div class="field"><label>Maksud Perjalanan</label><input id="s_maksud" placeholder="mis. Mengikuti Bimtek Pengelolaan Dana BOS"></div>
+    <div class="field"><label>Maksud Perjalanan</label><input id="s_maksud" placeholder="mis. Mengikuti Bimtek Pengelolaan Dana BOS" value="${editing?(editing.maksud||''):''}"></div>
     <div class="row">
-      <div class="field"><label>Tempat Tujuan</label><input id="s_tujuan" placeholder="mis. Mataram"></div>
-      <div class="field"><label>Alat Angkut</label><input id="s_angkut" placeholder="Kendaraan pribadi/umum"></div>
+      <div class="field"><label>Tempat Tujuan</label><input id="s_tujuan" placeholder="mis. Mataram" value="${editing?(editing.tujuan||''):''}"></div>
+      <div class="field"><label>Alat Angkut</label><input id="s_angkut" placeholder="Kendaraan pribadi/umum" value="${editing?(editing.angkut||''):''}"></div>
     </div>
     <div class="row">
-      <div class="field"><label>Tanggal Berangkat</label><input type="date" id="s_berangkat"></div>
-      <div class="field"><label>Tanggal Kembali</label><input type="date" id="s_kembali"></div>
+      <div class="field"><label>Tanggal Berangkat</label><input type="date" id="s_berangkat" value="${editing?(editing.berangkat||''):''}"></div>
+      <div class="field"><label>Tanggal Kembali</label><input type="date" id="s_kembali" value="${editing?(editing.kembali||''):''}"></div>
     </div>
-    <button class="btn gold" id="btnAddSppd">Simpan SPPD</button>
+    <button class="btn gold" id="btnAddSppd">${editing?'Perbarui SPPD':'Simpan SPPD'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelSppd">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Daftar SPPD</h2>
     ${rows.length===0?'<div class="empty">Belum ada SPPD.</div>':`
     <table><thead><tr><th>Nomor</th><th>Nama</th><th>Tujuan</th><th>Berangkat</th><th>Kembali</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(s=>`<tr><td class="mono">${s.nomor}</td><td>${s.nama}</td><td>${s.tujuan}</td><td>${fmtDate(s.berangkat)}</td><td>${fmtDate(s.kembali)}</td><td class="no-print"><button class="btn sm outline" data-print-sppd="${s.id}">Cetak</button> <button class="btn danger" data-del-sppd="${s.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+    <tbody>${rows.map(s=>`<tr><td class="mono">${s.nomor}</td><td>${s.nama}</td><td>${s.tujuan}</td><td>${fmtDate(s.berangkat)}</td><td>${fmtDate(s.kembali)}</td><td class="no-print"><button class="btn sm outline" data-print-sppd="${s.id}">Cetak</button> <button class="btn sm outline" data-edit-sppd="${s.id}">Edit</button> <button class="btn danger" data-del-sppd="${s.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
   </div>`;
 }
 function printSppd(s){
@@ -828,27 +892,29 @@ function printSppd(s){
 
 function renderSuratTugasTab(){
   const rows = DB.suratTugas;
+  const editing = suratTugasEditingId ? rows.find(t=>t.id===suratTugasEditingId) : null;
   return `
   <div class="card">
-    <h2>Buat Surat Tugas Baru</h2>
+    <h2>${editing?'Edit Surat Tugas':'Buat Surat Tugas Baru'}</h2>
     <div class="row">
-      <div class="field"><label>Nomor Surat</label><input id="st_nomor" placeholder="mis. 015/ST/VIII/2026"></div>
-      <div class="field"><label>Tanggal</label><input type="date" id="st_tanggal"></div>
+      <div class="field"><label>Nomor Surat</label><input id="st_nomor" placeholder="mis. 015/ST/VIII/2026" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="st_tanggal" value="${editing?editing.tanggal:''}"></div>
     </div>
-    <div class="field"><label>Dasar</label><input id="st_dasar" placeholder="mis. Undangan Dinas Pendidikan No. .../2026"></div>
+    <div class="field"><label>Dasar</label><input id="st_dasar" placeholder="mis. Undangan Dinas Pendidikan No. .../2026" value="${editing?(editing.dasar||''):''}"></div>
     <div class="row">
-      <div class="field"><label>Nama yang Ditugaskan</label><input id="st_nama" placeholder="mis. Maemunah, S.Pd"></div>
-      <div class="field"><label>NIP</label><input id="st_nip"></div>
-      <div class="field"><label>Jabatan</label><input id="st_jabatan" placeholder="Bendahara BOSP"></div>
+      <div class="field"><label>Nama yang Ditugaskan</label><input id="st_nama" placeholder="mis. Maemunah, S.Pd" value="${editing?editing.nama:''}"></div>
+      <div class="field"><label>NIP</label><input id="st_nip" value="${editing?(editing.nip||''):''}"></div>
+      <div class="field"><label>Jabatan</label><input id="st_jabatan" placeholder="Bendahara BOSP" value="${editing?(editing.jabatan||''):''}"></div>
     </div>
-    <div class="field"><label>Untuk Melaksanakan Tugas</label><textarea id="st_tugas" rows="2" placeholder="mis. Mengikuti Bimbingan Teknis Pengelolaan Dana BOS di Mataram"></textarea></div>
-    <button class="btn gold" id="btnAddSuratTugas">Simpan Surat Tugas</button>
+    <div class="field"><label>Untuk Melaksanakan Tugas</label><textarea id="st_tugas" rows="2" placeholder="mis. Mengikuti Bimbingan Teknis Pengelolaan Dana BOS di Mataram">${editing?(editing.tugas||''):''}</textarea></div>
+    <button class="btn gold" id="btnAddSuratTugas">${editing?'Perbarui Surat Tugas':'Simpan Surat Tugas'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelSuratTugas">Batal Edit</button>':''}
   </div>
   <div class="card">
     <h2>Daftar Surat Tugas</h2>
     ${rows.length===0?'<div class="empty">Belum ada surat tugas.</div>':`
     <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Nama</th><th>Tugas</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(t=>`<tr><td class="mono">${t.nomor}</td><td>${fmtDate(t.tanggal)}</td><td>${t.nama}</td><td>${t.tugas}</td><td class="no-print"><button class="btn sm outline" data-print-suratTugas="${t.id}">Cetak</button> <button class="btn danger" data-del-suratTugas="${t.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+    <tbody>${rows.map(t=>`<tr><td class="mono">${t.nomor}</td><td>${fmtDate(t.tanggal)}</td><td>${t.nama}</td><td>${t.tugas}</td><td class="no-print"><button class="btn sm outline" data-print-suratTugas="${t.id}">Cetak</button> <button class="btn sm outline" data-edit-suratTugas="${t.id}">Edit</button> <button class="btn danger" data-del-suratTugas="${t.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
   </div>`;
 }
 function printSuratTugas(t){
@@ -1128,11 +1194,27 @@ function attachPageEvents(){
     const tanggal = document.getElementById('p_tanggal').value;
     const jumlah = document.getElementById('p_jumlah').value;
     if(!tanggal || !jumlah){ toast('Isi tanggal dan jumlah.'); return; }
-    DB.penerimaan.push({ id:uid(), tanggal, sumber:document.getElementById('p_sumber').value, tahap:document.getElementById('p_tahap').value, jumlah:Number(jumlah), ket:document.getElementById('p_ket').value });
-    saveDB(); toast('Penerimaan dana ditambahkan.'); render();
+    const data = { tanggal, sumber:document.getElementById('p_sumber').value, tahap:document.getElementById('p_tahap').value, jumlah:Number(jumlah), ket:document.getElementById('p_ket').value };
+    if(penerimaanEditingId){
+      const idx = DB.penerimaan.findIndex(p=>p.id===penerimaanEditingId);
+      if(idx!==-1) DB.penerimaan[idx] = {...DB.penerimaan[idx], ...data};
+      penerimaanEditingId = null;
+      toast('Penerimaan diperbarui.');
+    } else {
+      DB.penerimaan.push({ id:uid(), ...data });
+      toast('Penerimaan dana ditambahkan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelPenerimaan = document.getElementById('btnCancelPenerimaan');
+  if(btnCancelPenerimaan) btnCancelPenerimaan.addEventListener('click', ()=>{ penerimaanEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-penerimaan]').forEach(b=>b.addEventListener('click',()=>{
+    penerimaanEditingId = b.dataset.editPenerimaan; render();
+  }));
   document.querySelectorAll('[data-del-penerimaan]').forEach(b=>b.addEventListener('click',()=>{
-    DB.penerimaan = DB.penerimaan.filter(p=>p.id!==b.dataset.delPenerimaan); saveDB(); render();
+    DB.penerimaan = DB.penerimaan.filter(p=>p.id!==b.dataset.delPenerimaan);
+    if(penerimaanEditingId===b.dataset.delPenerimaan) penerimaanEditingId=null;
+    saveDB(); render();
   }));
 
   // Impor RKAS
@@ -1151,16 +1233,32 @@ function attachPageEvents(){
     const volume = Number(document.getElementById('r_volume').value||0);
     const harga = Number(document.getElementById('r_harga').value||0);
     if(!kode || !uraian){ toast('Isi kode rekening dan uraian.'); return; }
-    DB.rkas.push({
-      id:uid(), kode, namaReferensi:document.getElementById('r_namaReferensi').value, programKegiatanSNP:document.getElementById('r_programSNP').value,
+    const data = {
+      kode, namaReferensi:document.getElementById('r_namaReferensi').value, programKegiatanSNP:document.getElementById('r_programSNP').value,
       uraian, sumber:document.getElementById('r_sumber').value, volume, satuan:document.getElementById('r_satuan').value, harga, jumlah:volume*harga,
       tw1Pct:Number(document.getElementById('r_tw1').value||0), tw2Pct:Number(document.getElementById('r_tw2').value||0),
       tw3Pct:Number(document.getElementById('r_tw3').value||0), tw4Pct:Number(document.getElementById('r_tw4').value||0)
-    });
-    saveDB(); toast('Rincian RKAS ditambahkan.'); render();
+    };
+    if(rkasEditingId){
+      const idx = DB.rkas.findIndex(r=>r.id===rkasEditingId);
+      if(idx!==-1) DB.rkas[idx] = {...DB.rkas[idx], ...data};
+      rkasEditingId = null;
+      toast('Rincian RKAS diperbarui.');
+    } else {
+      DB.rkas.push({ id:uid(), ...data });
+      toast('Rincian RKAS ditambahkan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelRkas = document.getElementById('btnCancelRkas');
+  if(btnCancelRkas) btnCancelRkas.addEventListener('click', ()=>{ rkasEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-rkas]').forEach(b=>b.addEventListener('click',()=>{
+    rkasEditingId = b.dataset.editRkas; render();
+  }));
   document.querySelectorAll('[data-del-rkas]').forEach(b=>b.addEventListener('click',()=>{
-    DB.rkas = DB.rkas.filter(r=>r.id!==b.dataset.delRkas); saveDB(); render();
+    DB.rkas = DB.rkas.filter(r=>r.id!==b.dataset.delRkas);
+    if(rkasEditingId===b.dataset.delRkas) rkasEditingId=null;
+    saveDB(); render();
   }));
 
   // Impor BKU
@@ -1182,10 +1280,10 @@ function attachPageEvents(){
       pajakPreview.textContent = 'Masukkan persentase pajak manual di kolom sebelah.';
     } else {
       pajakPreview.textContent = `Akan dipotong otomatis: ${preset.jenis} ${preset.persen}% dari jumlah bruto.`;
-      if(manualInput) manualInput.value = preset.persen;
+      if(manualInput && !transaksiEditingId) manualInput.value = preset.persen;
     }
   }
-  if(jenisKegiatanSel){ jenisKegiatanSel.addEventListener('change', updatePajakPreview); updatePajakPreview(); }
+  if(jenisKegiatanSel){ jenisKegiatanSel.addEventListener('change', updatePajakPreview); if(!transaksiEditingId) updatePajakPreview(); }
 
   const btnAddTransaksi = document.getElementById('btnAddTransaksi');
   if(btnAddTransaksi) btnAddTransaksi.addEventListener('click', ()=>{
@@ -1207,17 +1305,33 @@ function attachPageEvents(){
     }
     const nominalPajak = tipe==='keluar' ? Math.round(bruto * (persen/100)) : 0;
     const netto = tipe==='keluar' ? bruto - nominalPajak : bruto;
-    DB.transaksi.push({
-      id:uid(), tanggal, noBukti:document.getElementById('t_bukti').value, uraian, kodeRekening,
+    const data = {
+      tanggal, noBukti:document.getElementById('t_bukti').value, uraian, kodeRekening,
       namaRekening: rkasItem? rkasItem.namaReferensi : '', programKegiatanSNP: rkasItem? rkasItem.programKegiatanSNP : '',
       jenisPembayaran:metode, tipe, jumlahBruto:bruto,
       pajak: nominalPajak>0 ? {jenis:jenisPajak, persen, nominal:nominalPajak} : {jenis:jenisPajak, persen:0, nominal:0},
       jumlahNetto: netto, penerima:document.getElementById('t_penerima').value
-    });
-    saveDB(); toast('Transaksi BKU disimpan.'); render();
+    };
+    if(transaksiEditingId){
+      const idx = DB.transaksi.findIndex(t=>t.id===transaksiEditingId);
+      if(idx!==-1) DB.transaksi[idx] = {...DB.transaksi[idx], ...data};
+      transaksiEditingId = null;
+      toast('Transaksi BKU diperbarui.');
+    } else {
+      DB.transaksi.push({ id:uid(), ...data });
+      toast('Transaksi BKU disimpan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelTransaksi = document.getElementById('btnCancelTransaksi');
+  if(btnCancelTransaksi) btnCancelTransaksi.addEventListener('click', ()=>{ transaksiEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-transaksi]').forEach(b=>b.addEventListener('click',()=>{
+    transaksiEditingId = b.dataset.editTransaksi; render();
+  }));
   document.querySelectorAll('[data-del-transaksi]').forEach(b=>b.addEventListener('click',()=>{
-    DB.transaksi = DB.transaksi.filter(t=>t.id!==b.dataset.delTransaksi); saveDB(); render();
+    DB.transaksi = DB.transaksi.filter(t=>t.id!==b.dataset.delTransaksi);
+    if(transaksiEditingId===b.dataset.delTransaksi) transaksiEditingId=null;
+    saveDB(); render();
   }));
 
   // Buku Pembantu tabs
@@ -1230,23 +1344,103 @@ function attachPageEvents(){
     dokumenTab = b.dataset.dokumenTab; render();
   }));
 
+  // Kwitansi — auto-generate dari BKU
+  const btnFillKwitansiFromBku = document.getElementById('btnFillKwitansiFromBku');
+  if(btnFillKwitansiFromBku) btnFillKwitansiFromBku.addEventListener('click', ()=>{
+    const tid = document.getElementById('k_fromBku').value;
+    if(!tid){ toast('Pilih transaksi BKU terlebih dahulu.'); return; }
+    const t = DB.transaksi.find(x=>x.id===tid);
+    if(!t) return;
+    document.getElementById('k_nomor').value = t.noBukti || '';
+    document.getElementById('k_tanggal').value = t.tanggal || '';
+    document.getElementById('k_kodeRekening').value = t.kodeRekening || '';
+    document.getElementById('k_untuk').value = t.uraian || '';
+    document.getElementById('k_jumlah').value = t.jumlahBruto || '';
+    document.getElementById('k_penerima').value = t.penerima || '';
+    document.getElementById('k_sourceBkuId').value = t.id;
+    toast('Form kwitansi diisi dari transaksi BKU.');
+  });
+  const btnAutoKwitansiAll = document.getElementById('btnAutoKwitansiAll');
+  if(btnAutoKwitansiAll) btnAutoKwitansiAll.addEventListener('click', ()=>{
+    const bkuKeluar = DB.transaksi.filter(t=>t.tipe==='keluar');
+    const belum = bkuKeluar.filter(t=> !DB.kwitansi.some(k=>k.sourceBkuId===t.id));
+    if(belum.length===0){ toast('Semua transaksi pengeluaran sudah memiliki kwitansi.'); return; }
+    belum.forEach(t=>{
+      DB.kwitansi.push({
+        id:uid(), tanggal:t.tanggal, nomor: t.noBukti || ('KW-'+t.id.toUpperCase()),
+        kodeKegiatan:'', kodeRekening:t.kodeRekening||'',
+        dari:'Bendahara BOSP '+(DB.profil.namaSekolah||''), untuk:t.uraian, jumlah:t.jumlahBruto,
+        penerima:t.penerima||'', sourceBkuId:t.id
+      });
+    });
+    saveDB(); toast(`${belum.length} kwitansi dibuat otomatis dari BKU.`); render();
+  });
+
   // Kwitansi
   const btnAddKwitansi = document.getElementById('btnAddKwitansi');
   if(btnAddKwitansi) btnAddKwitansi.addEventListener('click', ()=>{
     const nomor = document.getElementById('k_nomor').value;
     const jumlah = Number(document.getElementById('k_jumlah').value||0);
     if(!nomor || !jumlah){ toast('Isi nomor dan jumlah.'); return; }
-    DB.kwitansi.push({ id:uid(), tanggal:document.getElementById('k_tanggal').value, nomor,
+    const data = { tanggal:document.getElementById('k_tanggal').value, nomor,
       kodeKegiatan:document.getElementById('k_kodeKegiatan').value, kodeRekening:document.getElementById('k_kodeRekening').value,
-      dari:document.getElementById('k_dari').value, untuk:document.getElementById('k_untuk').value, jumlah, penerima:document.getElementById('k_penerima').value });
-    saveDB(); toast('Kwitansi disimpan.'); render();
+      dari:document.getElementById('k_dari').value, untuk:document.getElementById('k_untuk').value, jumlah,
+      penerima:document.getElementById('k_penerima').value, sourceBkuId:document.getElementById('k_sourceBkuId').value||null };
+    if(kwitansiEditingId){
+      const idx = DB.kwitansi.findIndex(k=>k.id===kwitansiEditingId);
+      if(idx!==-1) DB.kwitansi[idx] = {...DB.kwitansi[idx], ...data};
+      kwitansiEditingId = null;
+      toast('Kwitansi diperbarui.');
+    } else {
+      DB.kwitansi.push({ id:uid(), ...data });
+      toast('Kwitansi disimpan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelKwitansi = document.getElementById('btnCancelKwitansi');
+  if(btnCancelKwitansi) btnCancelKwitansi.addEventListener('click', ()=>{ kwitansiEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-kwitansi]').forEach(b=>b.addEventListener('click',()=>{
+    kwitansiEditingId = b.dataset.editKwitansi; render();
+  }));
   document.querySelectorAll('[data-del-kwitansi]').forEach(b=>b.addEventListener('click',()=>{
-    DB.kwitansi = DB.kwitansi.filter(k=>k.id!==b.dataset.delKwitansi); saveDB(); render();
+    DB.kwitansi = DB.kwitansi.filter(k=>k.id!==b.dataset.delKwitansi);
+    if(kwitansiEditingId===b.dataset.delKwitansi) kwitansiEditingId=null;
+    saveDB(); render();
   }));
   document.querySelectorAll('[data-print-kwitansi]').forEach(b=>b.addEventListener('click',()=>{
     printKwitansi(DB.kwitansi.find(x=>x.id===b.dataset.printKwitansi));
   }));
+
+  // Nota Pesanan — auto-generate dari RKAS
+  const btnFillNotaFromRkas = document.getElementById('btnFillNotaFromRkas');
+  if(btnFillNotaFromRkas) btnFillNotaFromRkas.addEventListener('click', ()=>{
+    const sel = document.getElementById('n_fromRkas');
+    const ids = Array.from(sel.selectedOptions).map(o=>o.value);
+    if(ids.length===0){ toast('Pilih minimal satu rincian RKAS.'); return; }
+    const items = ids.map(id=>DB.rkas.find(r=>r.id===id)).filter(Boolean);
+    const itemsTextarea = document.getElementById('n_items');
+    const newLines = items.map(r=>`${r.uraian} | ${r.volume} | ${r.satuan} | ${r.harga}`);
+    const existing = itemsTextarea.value.trim();
+    itemsTextarea.value = existing ? existing+'\n'+newLines.join('\n') : newLines.join('\n');
+    const idsField = document.getElementById('n_sourceRkasIds');
+    const currentIds = idsField.value ? idsField.value.split(',').filter(Boolean) : [];
+    idsField.value = [...new Set([...currentIds, ...ids])].join(',');
+    toast(`${items.length} item ditambahkan dari RKAS.`);
+  });
+  const btnAutoNotaAll = document.getElementById('btnAutoNotaAll');
+  if(btnAutoNotaAll) btnAutoNotaAll.addEventListener('click', ()=>{
+    const rkasBelum = DB.rkas.filter(r=> !DB.notaPesanan.some(n=> (n.sourceRkasIds||[]).includes(r.id)));
+    if(rkasBelum.length===0){ toast('Semua rincian RKAS sudah memiliki nota pesanan.'); return; }
+    rkasBelum.forEach((r,idx)=>{
+      DB.notaPesanan.push({
+        id:uid(), nomor: 'NP-'+(r.kode||'').replace(/[^0-9]/g,'').slice(-6)+'-'+(idx+1),
+        tanggal:'', kepada:'(Isi Nama Penyedia)',
+        items:[{ nama:r.uraian, jumlah:r.volume, satuan:r.satuan, harga:r.harga }],
+        sourceRkasIds:[r.id]
+      });
+    });
+    saveDB(); toast(`${rkasBelum.length} nota pesanan dibuat otomatis dari RKAS.`); render();
+  });
 
   // Nota Pesanan
   const btnAddNota = document.getElementById('btnAddNota');
@@ -1259,11 +1453,28 @@ function attachPageEvents(){
       const parts = l.split('|').map(s=>s.trim());
       return { nama:parts[0]||'', jumlah:Number(parts[1]||0), satuan:parts[2]||'', harga:Number(parts[3]||0) };
     });
-    DB.notaPesanan.push({ id:uid(), nomor, tanggal:document.getElementById('n_tanggal').value, kepada, items });
-    saveDB(); toast('Nota pesanan disimpan.'); render();
+    const sourceRkasIds = (document.getElementById('n_sourceRkasIds').value||'').split(',').filter(Boolean);
+    const data = { nomor, tanggal:document.getElementById('n_tanggal').value, kepada, items, sourceRkasIds };
+    if(notaEditingId){
+      const idx = DB.notaPesanan.findIndex(n=>n.id===notaEditingId);
+      if(idx!==-1) DB.notaPesanan[idx] = {...DB.notaPesanan[idx], ...data};
+      notaEditingId = null;
+      toast('Nota pesanan diperbarui.');
+    } else {
+      DB.notaPesanan.push({ id:uid(), ...data });
+      toast('Nota pesanan disimpan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelNota = document.getElementById('btnCancelNota');
+  if(btnCancelNota) btnCancelNota.addEventListener('click', ()=>{ notaEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-nota]').forEach(b=>b.addEventListener('click',()=>{
+    notaEditingId = b.dataset.editNota; render();
+  }));
   document.querySelectorAll('[data-del-nota]').forEach(b=>b.addEventListener('click',()=>{
-    DB.notaPesanan = DB.notaPesanan.filter(n=>n.id!==b.dataset.delNota); saveDB(); render();
+    DB.notaPesanan = DB.notaPesanan.filter(n=>n.id!==b.dataset.delNota);
+    if(notaEditingId===b.dataset.delNota) notaEditingId=null;
+    saveDB(); render();
   }));
   document.querySelectorAll('[data-print-nota]').forEach(b=>b.addEventListener('click',()=>{
     printNota(DB.notaPesanan.find(x=>x.id===b.dataset.printNota));
@@ -1275,13 +1486,29 @@ function attachPageEvents(){
     const nomor = document.getElementById('s_nomor').value;
     const nama = document.getElementById('s_nama').value;
     if(!nomor || !nama){ toast('Isi nomor dan nama pegawai.'); return; }
-    DB.sppd.push({ id:uid(), nomor, tanggal:document.getElementById('s_tanggal').value, nama, nip:document.getElementById('s_nip').value,
+    const data = { nomor, tanggal:document.getElementById('s_tanggal').value, nama, nip:document.getElementById('s_nip').value,
       jabatan:document.getElementById('s_jabatan').value, maksud:document.getElementById('s_maksud').value, tujuan:document.getElementById('s_tujuan').value,
-      angkut:document.getElementById('s_angkut').value, berangkat:document.getElementById('s_berangkat').value, kembali:document.getElementById('s_kembali').value });
-    saveDB(); toast('SPPD disimpan.'); render();
+      angkut:document.getElementById('s_angkut').value, berangkat:document.getElementById('s_berangkat').value, kembali:document.getElementById('s_kembali').value };
+    if(sppdEditingId){
+      const idx = DB.sppd.findIndex(s=>s.id===sppdEditingId);
+      if(idx!==-1) DB.sppd[idx] = {...DB.sppd[idx], ...data};
+      sppdEditingId = null;
+      toast('SPPD diperbarui.');
+    } else {
+      DB.sppd.push({ id:uid(), ...data });
+      toast('SPPD disimpan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelSppd = document.getElementById('btnCancelSppd');
+  if(btnCancelSppd) btnCancelSppd.addEventListener('click', ()=>{ sppdEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-sppd]').forEach(b=>b.addEventListener('click',()=>{
+    sppdEditingId = b.dataset.editSppd; render();
+  }));
   document.querySelectorAll('[data-del-sppd]').forEach(b=>b.addEventListener('click',()=>{
-    DB.sppd = DB.sppd.filter(s=>s.id!==b.dataset.delSppd); saveDB(); render();
+    DB.sppd = DB.sppd.filter(s=>s.id!==b.dataset.delSppd);
+    if(sppdEditingId===b.dataset.delSppd) sppdEditingId=null;
+    saveDB(); render();
   }));
   document.querySelectorAll('[data-print-sppd]').forEach(b=>b.addEventListener('click',()=>{
     printSppd(DB.sppd.find(x=>x.id===b.dataset.printSppd));
@@ -1293,12 +1520,28 @@ function attachPageEvents(){
     const nomor = document.getElementById('st_nomor').value;
     const nama = document.getElementById('st_nama').value;
     if(!nomor || !nama){ toast('Isi nomor dan nama.'); return; }
-    DB.suratTugas.push({ id:uid(), nomor, tanggal:document.getElementById('st_tanggal').value, dasar:document.getElementById('st_dasar').value,
-      nama, nip:document.getElementById('st_nip').value, jabatan:document.getElementById('st_jabatan').value, tugas:document.getElementById('st_tugas').value });
-    saveDB(); toast('Surat tugas disimpan.'); render();
+    const data = { nomor, tanggal:document.getElementById('st_tanggal').value, dasar:document.getElementById('st_dasar').value,
+      nama, nip:document.getElementById('st_nip').value, jabatan:document.getElementById('st_jabatan').value, tugas:document.getElementById('st_tugas').value };
+    if(suratTugasEditingId){
+      const idx = DB.suratTugas.findIndex(t=>t.id===suratTugasEditingId);
+      if(idx!==-1) DB.suratTugas[idx] = {...DB.suratTugas[idx], ...data};
+      suratTugasEditingId = null;
+      toast('Surat tugas diperbarui.');
+    } else {
+      DB.suratTugas.push({ id:uid(), ...data });
+      toast('Surat tugas disimpan.');
+    }
+    saveDB(); render();
   });
+  const btnCancelSuratTugas = document.getElementById('btnCancelSuratTugas');
+  if(btnCancelSuratTugas) btnCancelSuratTugas.addEventListener('click', ()=>{ suratTugasEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-suratTugas]').forEach(b=>b.addEventListener('click',()=>{
+    suratTugasEditingId = b.dataset.editSuratTugas; render();
+  }));
   document.querySelectorAll('[data-del-suratTugas]').forEach(b=>b.addEventListener('click',()=>{
-    DB.suratTugas = DB.suratTugas.filter(t=>t.id!==b.dataset.delSuratTugas); saveDB(); render();
+    DB.suratTugas = DB.suratTugas.filter(t=>t.id!==b.dataset.delSuratTugas);
+    if(suratTugasEditingId===b.dataset.delSuratTugas) suratTugasEditingId=null;
+    saveDB(); render();
   }));
   document.querySelectorAll('[data-print-suratTugas]').forEach(b=>b.addEventListener('click',()=>{
     printSuratTugas(DB.suratTugas.find(x=>x.id===b.dataset.printSuratTugas));
