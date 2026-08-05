@@ -321,6 +321,17 @@ function realisasiForKode(kode){
   return DB.transaksi.filter(t=>t.tipe==='keluar' && t.kodeRekening===kode).reduce((s,t)=>s+Number(t.jumlahBruto||0),0);
 }
 function twAmt(r, n){ return Math.round(Number(r.jumlah||0) * Number(r['tw'+n+'Pct']||0) / 100); }
+/* Jumlah realisasi di BKU untuk kode rekening yang terkait dengan sebuah Nota Pesanan (mengikuti data BKU yang sudah diupload/diinput) */
+function notaRealisasiBku(n){
+  const kodes = new Set();
+  (n.sourceRkasIds||[]).forEach(id=>{
+    const item = DB.rkas.find(r=>r.id===id);
+    if(item && item.kode) kodes.add(item.kode);
+  });
+  let total = 0;
+  kodes.forEach(k=> total += realisasiForKode(k));
+  return total;
+}
 function computeRealisasiPerKomponen(){
   const map = {};
   DB.rkas.forEach(r=>{
@@ -781,12 +792,12 @@ function renderNotaTab(){
   return `
   <div class="card no-print">
     <h2>Isi Otomatis dari RPD</h2>
-    <p class="hint">Item nota bisa diambil langsung dari rincian RPD (nama barang, volume, satuan, harga satuan) tanpa mengetik ulang — karena RPD sudah berupa rincian per barang/jasa, isian nota jadi lebih cepat dan akurat dibanding dari RKAS.</p>
+    <p class="hint">Item nota bisa diambil langsung dari rincian RPD (nama barang, volume, satuan, harga satuan) tanpa mengetik ulang. Tombol "Buat Nota Otomatis" akan mengelompokkan rincian RPD yang punya <b>Kode Rekening sama</b> ke dalam satu nota — misalnya semua rincian dengan kode <span class="mono">5.1.02.01.01.0024</span> (ATK) otomatis digabung jadi satu Nota Pesanan ATK, bukan satu nota per baris.</p>
     <div class="field"><label>Pilih Rincian RPD (bisa lebih dari satu, tahan Ctrl/Cmd untuk memilih banyak)</label>
       <select id="n_fromRkas" multiple size="6">${rkasOptions}</select>
     </div>
     <button class="btn outline" id="btnFillNotaFromRkas">Tambahkan sebagai Item Nota</button>
-    <button class="btn outline" id="btnAutoNotaAll">Buat Nota Otomatis per Item RPD Tersisa (${rkasBelum.length})</button>
+    <button class="btn outline" id="btnAutoNotaAll">Buat Nota Otomatis per Kode Rekening Tersisa (${rkasBelum.length})</button>
   </div>
   <div class="card">
     <h2>${editing?'Edit Nota Pesanan':'Buat Nota Pesanan Baru'}</h2>
@@ -805,8 +816,8 @@ function renderNotaTab(){
   <div class="card">
     <h2>Daftar Nota Pesanan</h2>
     ${rows.length===0?'<div class="empty">Belum ada nota pesanan.</div>':`
-    <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Kepada</th><th class="num">Total</th><th class="no-print"></th></tr></thead>
-    <tbody>${rows.map(n=>`<tr><td class="mono">${n.nomor}</td><td>${fmtDate(n.tanggal)}</td><td>${n.kepada}</td><td class="num">${fmtRp(n.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="no-print"><button class="btn sm outline" data-print-nota="${n.id}">Cetak</button> <button class="btn sm outline" data-edit-nota="${n.id}">Edit</button> <button class="btn danger" data-del-nota="${n.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+    <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Kepada</th><th class="num">Rencana (Nota)</th><th class="num">Realisasi (BKU)</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(n=>`<tr><td class="mono">${n.nomor}</td><td>${fmtDate(n.tanggal)}</td><td>${n.kepada}</td><td class="num">${fmtRp(n.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="num">${fmtRp(notaRealisasiBku(n))}</td><td class="no-print"><button class="btn sm outline" data-print-nota="${n.id}">Cetak</button> <button class="btn sm outline" data-edit-nota="${n.id}">Edit</button> <button class="btn danger" data-del-nota="${n.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
   </div>`;
 }
 function printNota(n){
@@ -1430,15 +1441,27 @@ function attachPageEvents(){
   if(btnAutoNotaAll) btnAutoNotaAll.addEventListener('click', ()=>{
     const rkasBelum = DB.rkas.filter(r=> !DB.notaPesanan.some(n=> (n.sourceRkasIds||[]).includes(r.id)));
     if(rkasBelum.length===0){ toast('Semua rincian RPD sudah memiliki nota pesanan.'); return; }
-    rkasBelum.forEach((r,idx)=>{
-      DB.notaPesanan.push({
-        id:uid(), nomor: 'NP-'+(r.kode||'').replace(/[^0-9]/g,'').slice(-6)+'-'+(idx+1),
-        tanggal:'', kepada:'(Isi Nama Penyedia)',
-        items:[{ nama:r.uraian, jumlah:r.volume, satuan:r.satuan, harga:r.harga }],
-        sourceRkasIds:[r.id]
-      });
+    // Kelompokkan rincian RPD berdasarkan Kode Rekening — semua barang dengan kode rekening
+    // yang sama (mis. 5.1.02.01.01.0024 = ATK) digabung jadi satu Nota Pesanan.
+    const groups = {};
+    const groupOrder = [];
+    rkasBelum.forEach(r=>{
+      const key = r.kode || r.namaReferensi || 'lainnya';
+      if(!groups[key]){ groups[key] = []; groupOrder.push(key); }
+      groups[key].push(r);
     });
-    saveDB(); toast(`${rkasBelum.length} nota pesanan dibuat otomatis dari RPD.`); render();
+    let madeCount = 0;
+    groupOrder.forEach((key, idx)=>{
+      const items = groups[key];
+      DB.notaPesanan.push({
+        id:uid(), nomor: 'NP-'+(key||'').replace(/[^0-9]/g,'').slice(-6)+'-'+(idx+1),
+        tanggal:'', kepada:'(Isi Nama Penyedia)',
+        items: items.map(r=>({ nama:r.uraian, jumlah:r.volume, satuan:r.satuan, harga:r.harga })),
+        sourceRkasIds: items.map(r=>r.id)
+      });
+      madeCount++;
+    });
+    saveDB(); toast(`${madeCount} nota pesanan dibuat otomatis dari RPD (dikelompokkan per kode rekening).`); render();
   });
 
   // Nota Pesanan
