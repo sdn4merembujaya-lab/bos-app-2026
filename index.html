@@ -8,6 +8,11 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
+  @page{
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
   :root{
     --navy:#173254;
     --navy-deep:#0e2138;
@@ -117,12 +122,29 @@
   .modal{background:#fff;border-radius:8px;padding:22px;max-width:560px;width:100%;}
   .modal h3{margin-top:0;}
   .closex{float:right;background:none;border:none;font-size:18px;color:var(--ink-soft);}
+
+  /* Blok tanda tangan (kwitansi, nota, SPPD, surat tugas, laporan) —
+     dipisah agar bisa dipaksa tetap 3 kolom saat cetak potrait */
+  .ttd-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px;text-align:center;}
+  .ttd-row.ttd-2{grid-template-columns:repeat(2,1fr);}
+  .ttd-row .ttd-slot{padding:0 6px;}
+  .ttd-row .ttd-gap{height:64px;}
+  .ttd-materai{font-size:8.5px;color:#aaa;border:1px dashed #ccc;border-radius:3px;width:85px;height:50px;display:flex;align-items:center;justify-content:center;line-height:1.2;margin:4px auto;}
+
   @media print{
     #sidebar,.no-print{display:none!important;}
     #main{padding:0;}
     body{background:#fff;}
     .card{border:none;box-shadow:none;}
     #main > *:not(.print-target){display:none!important;}
+
+    /* Paksa grid tetap sejajar horizontal saat dicetak — tanpa ini,
+       lebar kertas potrait (<900px) memicu breakpoint mobile yang
+       menumpuk kolom tanda tangan secara vertikal. */
+    .grid-3,.ttd-row{grid-template-columns:repeat(3,1fr)!important;}
+    .grid-2,.ttd-row.ttd-2{grid-template-columns:repeat(2,1fr)!important;}
+    .grid-4{grid-template-columns:repeat(4,1fr)!important;}
+    .grid-3,.grid-2,.grid-4,.ttd-row{gap:8px!important;}
   }
 </style>
 </head>
@@ -768,12 +790,24 @@ function printKwitansi(k){
       <div>Guna membayar &nbsp;&nbsp;: ${k.untuk}</div>
       <br>
       <div style="border:2px solid #b8862f;border-radius:6px;display:inline-block;padding:8px 24px;font-weight:700;font-size:18px;">Rp ${Number(k.jumlah).toLocaleString('id-ID')}</div>
-      <div class="grid grid-3" style="margin-top:36px;text-align:center;">
-        <div>Mengetahui,<br>Kepala Sekolah<br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}</div>
-        <div>Dibayar oleh,<br>Bendahara BOSP<br><br><br><br><b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
-        <div>${p.kabupaten||''}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,
-          <div style="height:64px;display:flex;align-items:flex-end;justify-content:center;margin:4px 0;">
-            <div style="font-size:8.5px;color:#aaa;border:1px dashed #ccc;border-radius:3px;width:85px;height:50px;display:flex;align-items:center;justify-content:center;line-height:1.2;">ruang materai<br>bila diperlukan</div>
+
+      <!-- Baris tanda tangan: kiri = Kepala Sekolah, tengah = Bendahara, kanan = Penerima/Penyedia.
+           Dipaksa tetap 3 kolom sejajar saat dicetak (lihat aturan @media print di <head>). -->
+      <div class="ttd-row">
+        <div class="ttd-slot">
+          Mengetahui,<br>Kepala Sekolah
+          <div class="ttd-gap"></div>
+          <b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}
+        </div>
+        <div class="ttd-slot">
+          Dibayar oleh,<br>Bendahara BOSP
+          <div class="ttd-gap"></div>
+          <b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
+        </div>
+        <div class="ttd-slot">
+          ${p.kabupaten||''}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,
+          <div class="ttd-gap" style="display:flex;align-items:flex-end;justify-content:center;">
+            <div class="ttd-materai">ruang materai<br>bila diperlukan</div>
           </div>
           <b>${k.penerima||''}</b>
         </div>
@@ -833,9 +867,11 @@ function printNota(n){
     <table><thead><tr><th>No.</th><th>Nama Barang</th><th class="num">Jumlah</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah Harga</th></tr></thead>
     <tbody>${n.items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.nama}</td><td class="num">${i.jumlah}</td><td>${i.satuan}</td><td class="num">${fmtRp(i.harga)}</td><td class="num">${fmtRp(i.jumlah*i.harga)}</td></tr>`).join('')}</tbody>
     <tfoot><tr><td colspan="5"><b>Total</b></td><td class="num"><b>${fmtRp(total)}</b></td></tr></tfoot></table>
-    <div class="grid grid-2" style="margin-top:30px;text-align:center;">
-      <div></div>
-      <div>${p.kabupaten||''}, ${fmtDate(n.tanggal)}<br>Bendahara BOSP<br><br><br><br><b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
+    <div class="ttd-row ttd-2">
+      <div class="ttd-slot"></div>
+      <div class="ttd-slot">${p.kabupaten||''}, ${fmtDate(n.tanggal)}<br>Bendahara BOSP
+        <div class="ttd-gap"></div>
+        <b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
     </div>
     <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
   </div>`;
@@ -893,9 +929,13 @@ function printSppd(s){
       <tr><td>7. Tanggal Berangkat</td><td>: ${fmtDate(s.berangkat)}</td></tr>
       <tr><td>8. Tanggal Kembali</td><td>: ${fmtDate(s.kembali)}</td></tr>
     </tbody></table>
-    <div class="grid grid-2" style="margin-top:36px;text-align:center;">
-      <div>${p.kabupaten||''}, ${fmtDate(s.tanggal)}<br>Yang Melaksanakan Perjalanan,<br><br><br><br><b>${s.nama}</b><br>NIP. ${s.nip||'-'}</div>
-      <div>Kepala Sekolah,<br><br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}</div>
+    <div class="ttd-row ttd-2">
+      <div class="ttd-slot">${p.kabupaten||''}, ${fmtDate(s.tanggal)}<br>Yang Melaksanakan Perjalanan,
+        <div class="ttd-gap"></div>
+        <b>${s.nama}</b><br>NIP. ${s.nip||'-'}</div>
+      <div class="ttd-slot">Kepala Sekolah,
+        <div class="ttd-gap"></div>
+        <b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}</div>
     </div>
     <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
   </div>`;
@@ -1128,17 +1168,13 @@ function generateLaporanHtml(sumber, periode){
     ${komponen.length===0?'<div class="empty">Belum ada data RPD/BKU.</div>':`
     <table><thead><tr><th>Komponen</th><th class="num">Anggaran</th><th class="num">Realisasi</th><th class="num">Sisa</th></tr></thead>
     <tbody>${komponen.map(k=>`<tr><td>${k.komponen}</td><td class="num">${fmtRp(k.anggaran)}</td><td class="num">${fmtRp(k.realisasi)}</td><td class="num">${fmtRp(k.sisa)}</td></tr>`).join('')}</tbody></table>`}
-    <div class="grid grid-2" style="margin-top:34px;">
-      <div style="text-align:center;">
-        <div>Bendahara BOS</div><br><br><br>
-        <div><b>${p.bendahara||'( ______________ )'}</b></div>
-        <div>NIP. ${p.nipBendahara||'-'}</div>
-      </div>
-      <div style="text-align:center;">
-        <div>Kepala Sekolah</div><br><br><br>
-        <div><b>${p.kepsek||'( ______________ )'}</b></div>
-        <div>NIP. ${p.nipKepsek||'-'}</div>
-      </div>
+    <div class="ttd-row ttd-2">
+      <div class="ttd-slot">Bendahara BOS
+        <div class="ttd-gap"></div>
+        <b>${p.bendahara||'( ______________ )'}</b><br>NIP. ${p.nipBendahara||'-'}</div>
+      <div class="ttd-slot">Kepala Sekolah
+        <div class="ttd-gap"></div>
+        <b>${p.kepsek||'( ______________ )'}</b><br>NIP. ${p.nipKepsek||'-'}</div>
     </div>
     <div class="no-print" style="margin-top:18px;"><button class="btn outline" onclick="window.print()">Cetak / Simpan PDF</button></div>
   </div>`;
