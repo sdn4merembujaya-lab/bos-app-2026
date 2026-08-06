@@ -115,7 +115,9 @@
   .section-tabs button.active{color:var(--navy-deep);border-bottom:2px solid var(--gold);}
   .toast{position:fixed;bottom:20px;right:20px;background:var(--navy-deep);color:#fff;padding:11px 18px;border-radius:6px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:999;opacity:0;transform:translateY(10px);transition:.25s;}
   .toast.show{opacity:1;transform:translateY(0);}
-  .letterhead{text-align:center;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:16px;}
+  .letterhead{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:16px;}
+  .letterhead .logo-kop{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
+  .letterhead .kop-text{flex:1;}
   .letterhead .sch{font-family:'Lora',serif;font-weight:700;font-size:16px;color:var(--navy-deep);}
   .letterhead .addr{font-size:11.5px;color:var(--ink-soft);}
   .modal-bg{position:fixed;inset:0;background:rgba(14,33,56,.55);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;z-index:200;}
@@ -175,7 +177,7 @@
 /* ============ DATA LAYER (localStorage) ============ */
 const DB_KEY = 'siperbos_v2';
 const defaultDB = {
-  profil:{ namaSekolah:'SD NEGERI 4 MEREMBUJAYA', npsn:'', alamat:'', desa:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
+  profil:{ namaSekolah:'SD NEGERI 4 MEREMBUJAYA', npsn:'', alamat:'', desa:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026', logoKab:'', logoSekolah:'' },
   penerimaan: [],
   rkas: [],
   transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,namaRekening,programKegiatanSNP,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto,penerima}
@@ -200,6 +202,9 @@ function loadDB(){
 function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
 let DB = loadDB();
 if(!DB.auth){ DB.auth = structuredClone(defaultDB.auth); saveDB(); }
+if(!DB.profil.logoKab && DB.profil.logoKab!==''){ DB.profil.logoKab=''; }
+if(DB.profil.logoSekolah===undefined){ DB.profil.logoSekolah=''; }
+if(DB.profil.logoKab===undefined){ DB.profil.logoKab=''; }
 
 /* ============ AUTH / LOGIN ============ */
 const SESSION_KEY = 'siperbos_session';
@@ -432,6 +437,36 @@ function pageProfil(){
   const p = DB.profil;
   return `
   ${head('Data Dasar','Profil Sekolah','Data ini digunakan sebagai kop surat pada dokumen laporan dan kwitansi.')}
+  <div class="card">
+    <h2>Logo Kop Surat</h2>
+    <p class="hint">Logo akan tampil di kiri-kanan kop surat pada Kwitansi, Nota Pesanan, SPPD, Surat Tugas, dan Laporan. Gunakan gambar persegi (mis. PNG transparan), ukuran file maksimal 1MB.</p>
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Logo Pemerintah Kabupaten/Kota</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:64px;height:64px;flex-shrink:0;border:1px dashed var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden;">
+            ${p.logoKab? `<img src="${p.logoKab}" style="max-width:100%;max-height:100%;object-fit:contain;">` : '<span class="hint" style="font-size:10px;text-align:center;">Belum ada</span>'}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <input type="file" id="f_logoKab" accept="image/*">
+            ${p.logoKab? '<button class="btn danger sm" id="btnHapusLogoKab" style="margin-top:6px;">Hapus Logo</button>' : ''}
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Logo Sekolah</label>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:64px;height:64px;flex-shrink:0;border:1px dashed var(--line);border-radius:4px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden;">
+            ${p.logoSekolah? `<img src="${p.logoSekolah}" style="max-width:100%;max-height:100%;object-fit:contain;">` : '<span class="hint" style="font-size:10px;text-align:center;">Belum ada</span>'}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <input type="file" id="f_logoSekolah" accept="image/*">
+            ${p.logoSekolah? '<button class="btn danger sm" id="btnHapusLogoSekolah" style="margin-top:6px;">Hapus Logo</button>' : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="card">
   <div class="grid grid-2">
       <div class="field"><label>Nama Pemerintah Kabupaten/Kota (baris 1 kop)</label><input id="f_pemerintahKab" value="${p.pemerintahKab||''}"></div>
@@ -713,11 +748,15 @@ function terbilang(n){
 function letterheadFull(){
   const p = DB.profil;
   return `
-    <div class="letterhead" style="text-align:center;">
-      <div style="font-size:13px;font-weight:600;">${p.pemerintahKab||''}</div>
-      <div style="font-size:13px;font-weight:600;">${p.dinas||''}</div>
-      <div class="sch" style="font-size:18px;">${p.namaSekolah||''}</div>
-      <div class="addr">${p.alamat||''}${p.kecamatan?', Kec. '+p.kecamatan:''}${p.kabupaten?' Kab. '+p.kabupaten:''}${p.kodePos?' Kode Pos '+p.kodePos:''}</div>
+    <div class="letterhead">
+      ${p.logoKab? `<img src="${p.logoKab}" class="logo-kop" alt="Logo Kabupaten">` : '<div class="logo-kop"></div>'}
+      <div class="kop-text">
+        <div style="font-size:13px;font-weight:600;">${p.pemerintahKab||''}</div>
+        <div style="font-size:13px;font-weight:600;">${p.dinas||''}</div>
+        <div class="sch" style="font-size:18px;">${p.namaSekolah||''}</div>
+        <div class="addr">${p.alamat||''}${p.kecamatan?', Kec. '+p.kecamatan:''}${p.kabupaten?' Kab. '+p.kabupaten:''}${p.kodePos?' Kode Pos '+p.kodePos:''}</div>
+      </div>
+      ${p.logoSekolah? `<img src="${p.logoSekolah}" class="logo-kop" alt="Logo Sekolah">` : '<div class="logo-kop"></div>'}
     </div>`;
 }
 
@@ -1513,11 +1552,8 @@ function generateLaporanHtml(sumber, periode){
   const komponen = computeRealisasiPerKomponen().sort((a,b)=>b.anggaran-a.anggaran);
   return `
   <div class="card" id="laporanCetak">
-    <div class="letterhead">
-      <div class="sch">${p.namaSekolah||'(Nama Sekolah belum diisi)'}</div>
-      <div class="addr">${p.alamat||''} ${p.kecamatan?', '+p.kecamatan:''} ${p.kabupaten?', '+p.kabupaten:''}</div>
-      <div class="addr">NPSN: ${p.npsn||'-'}</div>
-    </div>
+    ${letterheadFull()}
+    <div class="addr" style="text-align:center;margin-top:-10px;margin-bottom:12px;">NPSN: ${p.npsn||'-'}</div>
     <h3 style="text-align:center;">BERITA ACARA REKONSILIASI DANA BOS</h3>
     <p style="text-align:center;margin-top:-6px;color:var(--ink-soft);">Sumber Dana: ${sumber} — Periode: ${periode} — Tahun Anggaran ${p.tahunAnggaran}</p>
     <table>
@@ -1599,6 +1635,20 @@ function attachPageEvents(){
       DB.profil[k] = document.getElementById('f_'+k).value;
     });
     saveDB(); toast('Profil sekolah disimpan.');
+  });
+
+  // Logo kop surat
+  const fLogoKab = document.getElementById('f_logoKab');
+  if(fLogoKab) fLogoKab.addEventListener('change', ()=> handleLogoUpload(fLogoKab, 'logoKab'));
+  const fLogoSekolah = document.getElementById('f_logoSekolah');
+  if(fLogoSekolah) fLogoSekolah.addEventListener('change', ()=> handleLogoUpload(fLogoSekolah, 'logoSekolah'));
+  const btnHapusLogoKab = document.getElementById('btnHapusLogoKab');
+  if(btnHapusLogoKab) btnHapusLogoKab.addEventListener('click', ()=>{
+    DB.profil.logoKab = ''; saveDB(); toast('Logo kabupaten dihapus.'); render();
+  });
+  const btnHapusLogoSekolah = document.getElementById('btnHapusLogoSekolah');
+  if(btnHapusLogoSekolah) btnHapusLogoSekolah.addEventListener('click', ()=>{
+    DB.profil.logoSekolah = ''; saveDB(); toast('Logo sekolah dihapus.'); render();
   });
 
   // Penerimaan
@@ -2205,6 +2255,23 @@ function attachPageEvents(){
       DB = structuredClone(defaultDB); saveDB(); toast('Semua data telah dihapus.'); render();
     }
   });
+}
+
+/* Membaca file gambar logo sebagai base64 data URL dan menyimpannya ke profil sekolah */
+function handleLogoUpload(input, field){
+  const file = input.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ toast('File harus berupa gambar (PNG/JPG).'); input.value=''; return; }
+  if(file.size > 1024*1024){ toast('Ukuran file maksimal 1MB.'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e=>{
+    DB.profil[field] = e.target.result;
+    saveDB();
+    toast('Logo berhasil diunggah.');
+    render();
+  };
+  reader.onerror = ()=>{ toast('Gagal membaca file gambar.'); };
+  reader.readAsDataURL(file);
 }
 
 /* ============ IMPORTIR RPD / RKAS / BKU (format resmi ARKAS, Excel/CSV) ============ */
