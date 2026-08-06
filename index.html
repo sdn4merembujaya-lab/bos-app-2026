@@ -129,7 +129,6 @@
   .ttd-row.ttd-2{grid-template-columns:repeat(2,1fr);}
   .ttd-row .ttd-slot{padding:0 6px;}
   .ttd-row .ttd-gap{height:64px;}
-  .ttd-materai{font-size:8.5px;color:#aaa;border:1px dashed #ccc;border-radius:3px;width:85px;height:50px;display:flex;align-items:center;justify-content:center;line-height:1.2;margin:4px auto;}
 
   @media print{
     #sidebar,.no-print{display:none!important;}
@@ -166,7 +165,7 @@
 /* ============ DATA LAYER (localStorage) ============ */
 const DB_KEY = 'siperbos_v2';
 const defaultDB = {
-  profil:{ namaSekolah:'SD NEGERI 4 MEREMBUJAYA', npsn:'', alamat:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
+  profil:{ namaSekolah:'SD NEGERI 4 MEREMBUJAYA', npsn:'', alamat:'', desa:'', kecamatan:'Labuapi', kabupaten:'Lombok Barat', pemerintahKab:'PEMERINTAH KABUPATEN LOMBOK BARAT', dinas:'DINAS PENDIDIKAN DAN KEBUDAYAAN', kodePos:'', kepsek:'Darmawan, S.Pd', nipKepsek:'', bendahara:'Maemunah, S.Pd', nipBendahara:'', tahunAnggaran:'2026' },
   penerimaan: [],
   rkas: [],
   transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,namaRekening,programKegiatanSNP,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto,penerima}
@@ -201,6 +200,11 @@ function fmtRp(n){ n = Number(n)||0; return 'Rp ' + n.toLocaleString('id-ID'); }
 function fmtDate(d){ if(!d) return '-'; const dt = new Date(d); return dt.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 function optSel(val, current){ return val===current ? ' selected' : ''; }
+/* Lokasi untuk baris tanda tangan: "Desa, Kabupaten" jika desa diisi, kalau tidak pakai Kabupaten saja */
+function lokasiTtd(){
+  const p = DB.profil;
+  return p.desa ? (p.desa + (p.kabupaten? ', '+p.kabupaten : '')) : (p.kabupaten||'');
+}
 
 /* Preset jenis kegiatan -> jenis pajak & persentase (acuan umum, bisa disesuaikan) */
 const PAJAK_PRESET = {
@@ -422,6 +426,7 @@ function pageProfil(){
       <div class="field"><label>Nama Sekolah</label><input id="f_namaSekolah" value="${p.namaSekolah}"></div>
       <div class="field"><label>NPSN</label><input id="f_npsn" value="${p.npsn}"></div>
       <div class="field"><label>Alamat</label><input id="f_alamat" value="${p.alamat}"></div>
+      <div class="field"><label>Desa (untuk lokasi tanda tangan)</label><input id="f_desa" placeholder="mis. Merembu" value="${p.desa||''}"></div>
       <div class="field"><label>Kecamatan</label><input id="f_kecamatan" value="${p.kecamatan}"></div>
       <div class="field"><label>Kabupaten/Kota</label><input id="f_kabupaten" value="${p.kabupaten}"></div>
       <div class="field"><label>Kode Pos</label><input id="f_kodePos" value="${p.kodePos||''}"></div>
@@ -805,10 +810,8 @@ function printKwitansi(k){
           <b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
         </div>
         <div class="ttd-slot">
-          ${p.kabupaten||''}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,
-          <div class="ttd-gap" style="display:flex;align-items:flex-end;justify-content:center;">
-            <div class="ttd-materai">ruang materai<br>bila diperlukan</div>
-          </div>
+          ${lokasiTtd()}, ${fmtDate(k.tanggal)}<br>Diterima Oleh,
+          <div class="ttd-gap"></div>
           <b>${k.penerima||''}</b>
         </div>
       </div>
@@ -861,7 +864,7 @@ function printNota(n){
   <div class="card">
     ${letterheadFull()}
     <h3 style="text-align:center;">NOTA PESANAN BARANG</h3>
-    <div class="row"><div>Nomor &nbsp;: ${n.nomor}</div><div>Tanggal : ${fmtDate(n.tanggal)}</div></div>
+    <div>Nomor &nbsp;: ${n.nomor}</div>
     <div>Kepada Yth. &nbsp;: <b>${n.kepada}</b></div>
     <p>Dengan ini kami memesan barang sebagai berikut untuk keperluan sekolah:</p>
     <table><thead><tr><th>No.</th><th>Nama Barang</th><th class="num">Jumlah</th><th>Satuan</th><th class="num">Harga Satuan</th><th class="num">Jumlah Harga</th></tr></thead>
@@ -869,7 +872,7 @@ function printNota(n){
     <tfoot><tr><td colspan="5"><b>Total</b></td><td class="num"><b>${fmtRp(total)}</b></td></tr></tfoot></table>
     <div class="ttd-row ttd-2">
       <div class="ttd-slot"></div>
-      <div class="ttd-slot">${p.kabupaten||''}, ${fmtDate(n.tanggal)}<br>Bendahara BOSP
+      <div class="ttd-slot">${lokasiTtd()}, ${fmtDate(n.tanggal)}<br>Bendahara BOSP
         <div class="ttd-gap"></div>
         <b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
     </div>
@@ -930,7 +933,7 @@ function printSppd(s){
       <tr><td>8. Tanggal Kembali</td><td>: ${fmtDate(s.kembali)}</td></tr>
     </tbody></table>
     <div class="ttd-row ttd-2">
-      <div class="ttd-slot">${p.kabupaten||''}, ${fmtDate(s.tanggal)}<br>Yang Melaksanakan Perjalanan,
+      <div class="ttd-slot">${lokasiTtd()}, ${fmtDate(s.tanggal)}<br>Yang Melaksanakan Perjalanan,
         <div class="ttd-gap"></div>
         <b>${s.nama}</b><br>NIP. ${s.nip||'-'}</div>
       <div class="ttd-slot">Kepala Sekolah,
@@ -986,7 +989,7 @@ function printSuratTugas(t){
     <p>Untuk melaksanakan tugas: <b>${t.tugas}</b></p>
     <p>Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.</p>
     <div style="text-align:center;margin-top:36px;">
-      ${p.kabupaten||''}, ${fmtDate(t.tanggal)}<br>Kepala Sekolah,<br><br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}
+      ${lokasiTtd()}, ${fmtDate(t.tanggal)}<br>Kepala Sekolah,<br><br><br><br><br><b>${p.kepsek||''}</b><br>NIP. ${p.nipKepsek||'-'}
     </div>
     <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
   </div>`;
@@ -1295,7 +1298,7 @@ function attachPageEvents(){
   // Profil
   const btnSaveProfil = document.getElementById('btnSaveProfil');
   if(btnSaveProfil) btnSaveProfil.addEventListener('click', ()=>{
-    ['pemerintahKab','dinas','namaSekolah','npsn','alamat','kecamatan','kabupaten','kodePos','tahunAnggaran','kepsek','nipKepsek','bendahara','nipBendahara'].forEach(k=>{
+    ['pemerintahKab','dinas','namaSekolah','npsn','alamat','desa','kecamatan','kabupaten','kodePos','tahunAnggaran','kepsek','nipKepsek','bendahara','nipBendahara'].forEach(k=>{
       DB.profil[k] = document.getElementById('f_'+k).value;
     });
     saveDB(); toast('Profil sekolah disimpan.');
