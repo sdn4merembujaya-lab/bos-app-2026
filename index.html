@@ -1903,6 +1903,169 @@ function attachPageEvents(){
     printNota(DB.notaPesanan.find(x=>x.id===b.dataset.printNota));
   }));
 
+  // BAST — auto-generate dari Nota Pesanan
+  const btnFillBastFromNota = document.getElementById('btnFillBastFromNota');
+  if(btnFillBastFromNota) btnFillBastFromNota.addEventListener('click', ()=>{
+    const nid = document.getElementById('ba_fromNota').value;
+    if(!nid){ toast('Pilih Nota Pesanan terlebih dahulu.'); return; }
+    const n = DB.notaPesanan.find(x=>x.id===nid);
+    if(!n) return;
+    document.getElementById('ba_penyediaToko').value = n.kepada || '';
+    document.getElementById('ba_namaPekerjaan').value = 'Pengadaan '+(n.kepada||'Barang/Jasa');
+    document.getElementById('ba_items').value = n.items.map(i=>`${i.nama} | ${i.jumlah} | ${i.jumlah} | 0`).join('\n');
+    document.getElementById('ba_sourceNotaId').value = n.id;
+    toast('Form BAST diisi dari Nota Pesanan.');
+  });
+  const btnAddBast = document.getElementById('btnAddBast');
+  if(btnAddBast) btnAddBast.addEventListener('click', ()=>{
+    const nomor = document.getElementById('ba_nomor').value;
+    const raw = document.getElementById('ba_items').value.trim();
+    if(!nomor || !raw){ toast('Isi nomor BAST dan daftar barang.'); return; }
+    const items = raw.split('\n').filter(l=>l.trim()).map(l=>{
+      const parts = l.split('|').map(s=>s.trim());
+      return { nama:parts[0]||'', dipesan:Number(parts[1]||0), baik:Number(parts[2]||0), rusak:Number(parts[3]||0) };
+    });
+    const data = {
+      nomor, tanggal:document.getElementById('ba_tanggal').value,
+      noSuratPesanan:document.getElementById('ba_noSuratPesanan').value,
+      namaPekerjaan:document.getElementById('ba_namaPekerjaan').value,
+      tglPesan:document.getElementById('ba_tglPesan').value,
+      tglTerima:document.getElementById('ba_tglTerima').value,
+      penyediaNama:document.getElementById('ba_penyediaNama').value,
+      penyediaJabatan:document.getElementById('ba_penyediaJabatan').value,
+      penyediaToko:document.getElementById('ba_penyediaToko').value,
+      penyediaAlamat:document.getElementById('ba_penyediaAlamat').value,
+      penyediaTelp:document.getElementById('ba_penyediaTelp').value,
+      items, sourceNotaId:document.getElementById('ba_sourceNotaId').value||null
+    };
+    if(bastEditingId){
+      const idx = DB.bast.findIndex(x=>x.id===bastEditingId);
+      if(idx!==-1) DB.bast[idx] = {...DB.bast[idx], ...data};
+      bastEditingId = null;
+      toast('BAST diperbarui.');
+    } else {
+      DB.bast.push({ id:uid(), ...data });
+      toast('BAST disimpan.');
+    }
+    saveDB(); render();
+  });
+  const btnCancelBast = document.getElementById('btnCancelBast');
+  if(btnCancelBast) btnCancelBast.addEventListener('click', ()=>{ bastEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-bast]').forEach(b=>b.addEventListener('click',()=>{
+    bastEditingId = b.dataset.editBast; render();
+  }));
+  document.querySelectorAll('[data-del-bast]').forEach(b=>b.addEventListener('click',()=>{
+    DB.bast = DB.bast.filter(x=>x.id!==b.dataset.delBast);
+    if(bastEditingId===b.dataset.delBast) bastEditingId=null;
+    saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-bast]').forEach(b=>b.addEventListener('click',()=>{
+    printBast(DB.bast.find(x=>x.id===b.dataset.printBast));
+  }));
+
+  // Invoice — auto-generate dari Nota Pesanan
+  const btnFillInvoiceFromNota = document.getElementById('btnFillInvoiceFromNota');
+  if(btnFillInvoiceFromNota) btnFillInvoiceFromNota.addEventListener('click', ()=>{
+    const nid = document.getElementById('iv_fromNota').value;
+    if(!nid){ toast('Pilih Nota Pesanan terlebih dahulu.'); return; }
+    const n = DB.notaPesanan.find(x=>x.id===nid);
+    if(!n) return;
+    document.getElementById('iv_dari').value = n.kepada || '';
+    document.getElementById('iv_items').value = itemsTextFromNota(n);
+    document.getElementById('iv_sourceNotaId').value = n.id;
+    toast('Form Invoice diisi dari Nota Pesanan.');
+  });
+  const btnAddInvoice = document.getElementById('btnAddInvoice');
+  if(btnAddInvoice) btnAddInvoice.addEventListener('click', ()=>{
+    const nomor = document.getElementById('iv_nomor').value;
+    const raw = document.getElementById('iv_items').value.trim();
+    if(!nomor || !raw){ toast('Isi nomor invoice dan daftar barang.'); return; }
+    const items = parseItemLines(raw);
+    const data = {
+      nomor, tanggal:document.getElementById('iv_tanggal').value,
+      dari:document.getElementById('iv_dari').value,
+      metodeBayar:document.getElementById('iv_metodeBayar').value,
+      metodeKirim:document.getElementById('iv_metodeKirim').value,
+      items, sourceNotaId:document.getElementById('iv_sourceNotaId').value||null
+    };
+    if(invoiceEditingId){
+      const idx = DB.invoice.findIndex(x=>x.id===invoiceEditingId);
+      if(idx!==-1) DB.invoice[idx] = {...DB.invoice[idx], ...data};
+      invoiceEditingId = null;
+      toast('Invoice diperbarui.');
+    } else {
+      DB.invoice.push({ id:uid(), ...data });
+      toast('Invoice disimpan.');
+    }
+    saveDB(); render();
+  });
+  const btnCancelInvoice = document.getElementById('btnCancelInvoice');
+  if(btnCancelInvoice) btnCancelInvoice.addEventListener('click', ()=>{ invoiceEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-invoice]').forEach(b=>b.addEventListener('click',()=>{
+    invoiceEditingId = b.dataset.editInvoice; render();
+  }));
+  document.querySelectorAll('[data-del-invoice]').forEach(b=>b.addEventListener('click',()=>{
+    DB.invoice = DB.invoice.filter(x=>x.id!==b.dataset.delInvoice);
+    if(invoiceEditingId===b.dataset.delInvoice) invoiceEditingId=null;
+    saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-invoice]').forEach(b=>b.addEventListener('click',()=>{
+    printInvoice(DB.invoice.find(x=>x.id===b.dataset.printInvoice));
+  }));
+
+  // SPK — auto-generate dari Nota Pesanan
+  const btnFillSpkFromNota = document.getElementById('btnFillSpkFromNota');
+  if(btnFillSpkFromNota) btnFillSpkFromNota.addEventListener('click', ()=>{
+    const nid = document.getElementById('sp_fromNota').value;
+    if(!nid){ toast('Pilih Nota Pesanan terlebih dahulu.'); return; }
+    const n = DB.notaPesanan.find(x=>x.id===nid);
+    if(!n) return;
+    document.getElementById('sp_paket').value = n.kepada || '';
+    document.getElementById('sp_penyediaNama').value = n.kepada || '';
+    document.getElementById('sp_items').value = itemsTextFromNota(n);
+    document.getElementById('sp_sourceNotaId').value = n.id;
+    toast('Form SPK diisi dari Nota Pesanan.');
+  });
+  const btnAddSpk = document.getElementById('btnAddSpk');
+  if(btnAddSpk) btnAddSpk.addEventListener('click', ()=>{
+    const nomor = document.getElementById('sp_nomor').value;
+    const raw = document.getElementById('sp_items').value.trim();
+    if(!nomor || !raw){ toast('Isi nomor SPK dan daftar barang.'); return; }
+    const items = parseItemLines(raw);
+    const data = {
+      nomor, tanggal:document.getElementById('sp_tanggal').value,
+      paket:document.getElementById('sp_paket').value,
+      sumberDana:document.getElementById('sp_sumberDana').value,
+      waktuKerja:document.getElementById('sp_waktuKerja').value,
+      waktuSelesai:document.getElementById('sp_waktuSelesai').value,
+      penyediaNama:document.getElementById('sp_penyediaNama').value,
+      items, sourceNotaId:document.getElementById('sp_sourceNotaId').value||null
+    };
+    if(spkEditingId){
+      const idx = DB.spk.findIndex(x=>x.id===spkEditingId);
+      if(idx!==-1) DB.spk[idx] = {...DB.spk[idx], ...data};
+      spkEditingId = null;
+      toast('SPK diperbarui.');
+    } else {
+      DB.spk.push({ id:uid(), ...data });
+      toast('SPK disimpan.');
+    }
+    saveDB(); render();
+  });
+  const btnCancelSpk = document.getElementById('btnCancelSpk');
+  if(btnCancelSpk) btnCancelSpk.addEventListener('click', ()=>{ spkEditingId=null; render(); });
+  document.querySelectorAll('[data-edit-spk]').forEach(b=>b.addEventListener('click',()=>{
+    spkEditingId = b.dataset.editSpk; render();
+  }));
+  document.querySelectorAll('[data-del-spk]').forEach(b=>b.addEventListener('click',()=>{
+    DB.spk = DB.spk.filter(x=>x.id!==b.dataset.delSpk);
+    if(spkEditingId===b.dataset.delSpk) spkEditingId=null;
+    saveDB(); render();
+  }));
+  document.querySelectorAll('[data-print-spk]').forEach(b=>b.addEventListener('click',()=>{
+    printSpk(DB.spk.find(x=>x.id===b.dataset.printSpk));
+  }));
+
   // SPPD
   const btnAddSppd = document.getElementById('btnAddSppd');
   if(btnAddSppd) btnAddSppd.addEventListener('click', ()=>{
