@@ -130,6 +130,16 @@
   .ttd-row .ttd-slot{padding:0 6px;}
   .ttd-row .ttd-gap{height:64px;}
 
+  /* Kop judul bergradasi biru untuk dokumen BAST / Invoice / SPK, meniru format resmi ARKAS/SIPLah */
+  .doc-title-bar{background:linear-gradient(90deg,var(--navy) 0%,#5f8db3 100%);color:#fff;font-weight:700;font-size:17px;letter-spacing:.02em;padding:10px 16px;border-radius:3px;margin-bottom:16px;}
+  .doc-info-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12.8px;}
+  .doc-info-table td{border:1px solid #b9c2cc;padding:6px 8px;vertical-align:top;}
+  .doc-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .doc-table th,.doc-table td{border:1px solid #7a8593;padding:5px 8px;}
+  .doc-table th{background:#e9edf1;font-weight:700;text-transform:none;letter-spacing:0;}
+  .doc-table td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+  .doc-total-box{background:var(--navy);color:#fff;font-weight:700;font-size:19px;padding:8px 20px;display:inline-block;border-radius:3px;}
+
   @media print{
     #sidebar,.no-print{display:none!important;}
     #main{padding:0;}
@@ -171,6 +181,9 @@ const defaultDB = {
   transaksi: [], // BKU: {id,tanggal,noBukti,uraian,kodeRekening,namaRekening,programKegiatanSNP,sumberDana,jenisPembayaran(tunai/bank),tipe(masuk/keluar),jumlahBruto,pajak:{jenis,persen,nominal},jumlahNetto,penerima}
   kwitansi: [],
   notaPesanan: [],
+  bast: [],
+  invoice: [],
+  spk: [],
   sppd: [],
   suratTugas: [],
   checklistSpj: [],
@@ -712,14 +725,20 @@ function letterheadFull(){
 let dokumenTab = 'kwitansi';
 let kwitansiEditingId = null;
 let notaEditingId = null;
+let bastEditingId = null;
+let invoiceEditingId = null;
+let spkEditingId = null;
 function pageDokumen(){
   const tabs = [
     {id:'kwitansi', label:'Kwitansi'},
     {id:'nota', label:'Nota Pesanan'},
+    {id:'bast', label:'BAST'},
+    {id:'invoice', label:'Invoice'},
+    {id:'spk', label:'SPK'},
     {id:'sppd', label:'SPPD'},
     {id:'suratTugas', label:'Surat Tugas'}
   ];
-  const renderers = {kwitansi:renderKwitansiTab, nota:renderNotaTab, sppd:renderSppdTab, suratTugas:renderSuratTugasTab};
+  const renderers = {kwitansi:renderKwitansiTab, nota:renderNotaTab, bast:renderBastTab, invoice:renderInvoiceTab, spk:renderSpkTab, sppd:renderSppdTab, suratTugas:renderSuratTugasTab};
   return `
   ${head('Penatausahaan','Kwitansi, Nota & Surat','Buat dokumen SPJ dengan kop surat resmi sekolah — siap cetak.')}
   <div class="section-tabs no-print">
@@ -875,6 +894,284 @@ function printNota(n){
       <div class="ttd-slot">${lokasiTtd()}, ${fmtDate(n.tanggal)}<br>Bendahara BOSP
         <div class="ttd-gap"></div>
         <b>${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}</div>
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+/* ---- Helper bersama BAST / Invoice / SPK: ambil daftar Nota Pesanan utk dropdown & isi ulang item dari Nota ---- */
+function notaOptionsHtml(selectedId){
+  return DB.notaPesanan.map(n=>`<option value="${n.id}"${optSel(n.id, selectedId||'')}>${n.nomor} — ${n.kepada} (${fmtRp(n.items.reduce((s,i)=>s+i.jumlah*i.harga,0))})</option>`).join('');
+}
+function itemsTextFromNota(n){
+  return n.items.map(i=>`${i.nama} | ${i.jumlah} | ${i.satuan} | ${i.harga}`).join('\n');
+}
+function parseItemLines(raw){
+  return raw.trim().split('\n').filter(l=>l.trim()).map(l=>{
+    const parts = l.split('|').map(s=>s.trim());
+    return { nama:parts[0]||'', jumlah:Number(parts[1]||0), satuan:parts[2]||'', harga:Number(parts[3]||0) };
+  });
+}
+
+/* ============ BAST (Berita Acara Serah Terima) ============ */
+function renderBastTab(){
+  const rows = DB.bast;
+  const editing = bastEditingId ? rows.find(x=>x.id===bastEditingId) : null;
+  return `
+  <div class="card no-print">
+    <h2>Isi Otomatis dari Nota Pesanan</h2>
+    <p class="hint">Pilih Nota Pesanan untuk mengisi daftar barang dan nama penyedia secara otomatis.</p>
+    <div class="field"><label>Nota Pesanan</label><select id="ba_fromNota"><option value="">— pilih —</option>${notaOptionsHtml(editing?editing.sourceNotaId:'')}</select></div>
+    <button class="btn outline" id="btnFillBastFromNota">Isi dari Nota Pesanan</button>
+  </div>
+  <div class="card">
+    <h2>${editing?'Edit BAST':'Buat BAST Baru'}</h2>
+    <div class="row">
+      <div class="field"><label>Nomor BAST</label><input id="ba_nomor" placeholder="024" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="ba_tanggal" value="${editing?editing.tanggal:''}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Nomor Surat Pesanan</label><input id="ba_noSuratPesanan" placeholder="421.2/08/SDN.1-Mrb/2026" value="${editing?(editing.noSuratPesanan||''):''}"></div>
+      <div class="field"><label>Nama Pekerjaan</label><input id="ba_namaPekerjaan" placeholder="Pengadaan ATK" value="${editing?(editing.namaPekerjaan||''):''}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Tanggal Pemesanan</label><input type="date" id="ba_tglPesan" value="${editing?(editing.tglPesan||''):''}"></div>
+      <div class="field"><label>Tanggal Barang Diterima</label><input type="date" id="ba_tglTerima" value="${editing?(editing.tglTerima||''):''}"></div>
+    </div>
+    <h3>Pihak Pertama (Penyedia)</h3>
+    <div class="row">
+      <div class="field"><label>Nama</label><input id="ba_penyediaNama" value="${editing?(editing.penyediaNama||''):''}"></div>
+      <div class="field"><label>Jabatan</label><input id="ba_penyediaJabatan" value="${editing?(editing.penyediaJabatan||'Owner / Pemilik'):'Owner / Pemilik'}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Nama Perusahaan/Toko</label><input id="ba_penyediaToko" value="${editing?(editing.penyediaToko||''):''}"></div>
+      <div class="field"><label>Alamat Perusahaan</label><input id="ba_penyediaAlamat" value="${editing?(editing.penyediaAlamat||''):''}"></div>
+      <div class="field"><label>No. Telepon</label><input id="ba_penyediaTelp" value="${editing?(editing.penyediaTelp||''):''}"></div>
+    </div>
+    <div class="field"><label>Daftar Barang (format: nama | dipesan | diterima kondisi baik | diterima kondisi rusak)</label>
+      <textarea id="ba_items" rows="4" placeholder="Sampul Raport Kelas I | 25 | 25 | 0">${editing?editing.items.map(i=>`${i.nama} | ${i.dipesan} | ${i.baik} | ${i.rusak}`).join('\n'):''}</textarea>
+    </div>
+    <input type="hidden" id="ba_sourceNotaId" value="${editing?(editing.sourceNotaId||''):''}">
+    <button class="btn gold" id="btnAddBast">${editing?'Perbarui BAST':'Simpan BAST'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelBast">Batal Edit</button>':''}
+  </div>
+  <div class="card">
+    <h2>Daftar BAST</h2>
+    ${rows.length===0?'<div class="empty">Belum ada BAST.</div>':`
+    <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Nama Pekerjaan</th><th>Penyedia</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(x=>`<tr><td class="mono">${x.nomor}</td><td>${fmtDate(x.tanggal)}</td><td>${x.namaPekerjaan||'-'}</td><td>${x.penyediaToko||x.penyediaNama||'-'}</td><td class="no-print"><button class="btn sm outline" data-print-bast="${x.id}">Cetak</button> <button class="btn sm outline" data-edit-bast="${x.id}">Edit</button> <button class="btn danger" data-del-bast="${x.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printBast(x){
+  const p = DB.profil;
+  const totalDipesan = x.items.reduce((s,i)=>s+Number(i.dipesan||0),0);
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    <div class="doc-title-bar">BERITA ACARA SERAH TERIMA</div>
+    <div style="text-align:center;font-weight:700;text-decoration:underline;">BERITA ACARA SERAH TERIMA (BAST)</div>
+    <div style="text-align:center;margin-bottom:12px;">Nomor : ${x.nomor}</div>
+    <p>Pada hari ini, ${fmtDate(x.tanggal)}, sesuai dengan:</p>
+    <table class="doc-info-table">
+      <tr><td style="width:220px;">Nomor Surat Pesanan</td><td>: ${x.noSuratPesanan||'-'}</td></tr>
+      <tr><td>Nama Pekerjaan</td><td>: ${x.namaPekerjaan||'-'}</td></tr>
+      <tr><td>Tanggal Pemesanan</td><td>: ${fmtDate(x.tglPesan)}</td></tr>
+      <tr><td>Tanggal Barang Diterima</td><td>: ${fmtDate(x.tglTerima)}</td></tr>
+    </table>
+    <p>Kami yang tercantum di bawah ini:</p>
+    <table class="doc-info-table">
+      <tr><td style="width:220px;">1. Nama</td><td>: ${x.penyediaNama||'-'}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;Jabatan</td><td>: ${x.penyediaJabatan||'-'}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;Nama Perusahaan/Toko</td><td>: ${x.penyediaToko||'-'}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;Alamat Perusahaan</td><td>: ${x.penyediaAlamat||'-'}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;No. Telepon</td><td>: ${x.penyediaTelp||'-'}</td></tr>
+      <tr><td colspan="2">Sebagai pihak yang menyerahkan, selanjutnya disebut <b>PIHAK PERTAMA</b></td></tr>
+      <tr><td style="width:220px;">2. Nama</td><td>: ${p.bendahara||''}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;Jabatan</td><td>: Bendahara BOSP ${p.namaSekolah||''}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;Nama Satdik</td><td>: ${p.namaSekolah||''}</td></tr>
+      <tr><td>&nbsp;&nbsp;&nbsp;Alamat Satdik</td><td>: ${p.alamat||''}${p.desa?', Desa '+p.desa:''}${p.kecamatan?' Kec. '+p.kecamatan:''}${p.kabupaten?' Kab. '+p.kabupaten:''}</td></tr>
+      <tr><td colspan="2">Sebagai pihak yang menerima, selanjutnya disebut <b>PIHAK KEDUA</b></td></tr>
+    </table>
+    <p>PIHAK PERTAMA menyerahkan hasil pekerjaan Pengadaan Barang/Jasa kepada PIHAK KEDUA, dan PIHAK KEDUA telah menerima hasil pekerjaan tersebut dalam jumlah yang lengkap dan kondisi yang baik sesuai dengan rincian sebagaimana dalam lampiran BAST ini.</p>
+    <p>Berita Acara Serah Terima ini berfungsi sebagai bukti serah terima hasil pekerjaan kepada PIHAK KEDUA, untuk selanjutnya dicatat pada buku penerimaan barang sekolah.</p>
+    <p>Demikian Berita Acara Serah Terima ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana seharusnya.</p>
+    <div class="ttd-row ttd-2">
+      <div class="ttd-slot">PIHAK PERTAMA</div>
+      <div class="ttd-slot">PIHAK KEDUA
+        <div class="ttd-gap"></div>
+        <b style="text-decoration:underline;">${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
+        <div style="margin-top:18px;">PEMERIKSA BARANG</div>
+        <div class="ttd-gap"></div>
+        <b style="text-decoration:underline;">${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
+      </div>
+    </div>
+    <div style="page-break-before:always;padding-top:24px;">
+      <div class="doc-title-bar">LAMPIRAN BAST</div>
+      <p>Lampiran BAST Nomor &nbsp;: ${x.nomor}</p>
+      <p>PIHAK PERTAMA menyerahkan hasil pekerjaan Pengadaan Barang/Jasa kepada PIHAK KEDUA, dan PIHAK KEDUA telah menerima hasil pekerjaan tersebut dalam jumlah yang lengkap dan kondisi yang baik sesuai dengan rincian sebagai berikut:</p>
+      <table class="doc-table"><thead><tr><th style="width:34px;">No</th><th>Uraian Barang/Jasa</th><th class="num">Jumlah Dipesan</th><th class="num">Diterima Kondisi Baik</th><th class="num">Diterima Kondisi Rusak</th></tr></thead>
+      <tbody>${x.items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.nama}</td><td class="num">${i.dipesan}</td><td class="num">${i.baik}</td><td class="num">${Number(i.rusak)>0?i.rusak:'-'}</td></tr>`).join('')}</tbody></table>
+      <div class="ttd-row ttd-2">
+        <div class="ttd-slot">PIHAK PERTAMA</div>
+        <div class="ttd-slot">PIHAK KEDUA
+          <div class="ttd-gap"></div>
+          <b style="text-decoration:underline;">${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
+          <div style="margin-top:18px;">PEMERIKSA BARANG</div>
+          <div class="ttd-gap"></div>
+          <b style="text-decoration:underline;">${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
+        </div>
+      </div>
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+/* ============ INVOICE ============ */
+function renderInvoiceTab(){
+  const rows = DB.invoice;
+  const editing = invoiceEditingId ? rows.find(x=>x.id===invoiceEditingId) : null;
+  return `
+  <div class="card no-print">
+    <h2>Isi Otomatis dari Nota Pesanan</h2>
+    <div class="field"><label>Nota Pesanan</label><select id="iv_fromNota"><option value="">— pilih —</option>${notaOptionsHtml(editing?editing.sourceNotaId:'')}</select></div>
+    <button class="btn outline" id="btnFillInvoiceFromNota">Isi dari Nota Pesanan</button>
+  </div>
+  <div class="card">
+    <h2>${editing?'Edit Invoice':'Buat Invoice Baru'}</h2>
+    <div class="row">
+      <div class="field"><label>No. Invoice</label><input id="iv_nomor" placeholder="024" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal</label><input type="date" id="iv_tanggal" value="${editing?editing.tanggal:''}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Dari (Nama Penyedia/Toko)</label><input id="iv_dari" placeholder="Toko ABC" value="${editing?(editing.dari||''):''}"></div>
+      <div class="field"><label>Metode Pembayaran</label><input id="iv_metodeBayar" placeholder="Tunai" value="${editing?(editing.metodeBayar||'Tunai'):'Tunai'}"></div>
+      <div class="field"><label>Metode Pengiriman</label><input id="iv_metodeKirim" placeholder="Satdik Ambil Sendiri" value="${editing?(editing.metodeKirim||'Satdik Ambil Sendiri'):'Satdik Ambil Sendiri'}"></div>
+    </div>
+    <div class="field"><label>Daftar barang (format: nama | jumlah | satuan | harga satuan)</label>
+      <textarea id="iv_items" rows="4" placeholder="Sampul Raport Kelas I | 25 | Buah | 35000">${editing?editing.items.map(i=>`${i.nama} | ${i.jumlah} | ${i.satuan} | ${i.harga}`).join('\n'):''}</textarea>
+    </div>
+    <input type="hidden" id="iv_sourceNotaId" value="${editing?(editing.sourceNotaId||''):''}">
+    <button class="btn gold" id="btnAddInvoice">${editing?'Perbarui Invoice':'Simpan Invoice'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelInvoice">Batal Edit</button>':''}
+  </div>
+  <div class="card">
+    <h2>Daftar Invoice</h2>
+    ${rows.length===0?'<div class="empty">Belum ada invoice.</div>':`
+    <table><thead><tr><th>No.</th><th>Tanggal</th><th>Dari</th><th class="num">Total</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(x=>`<tr><td class="mono">${x.nomor}</td><td>${fmtDate(x.tanggal)}</td><td>${x.dari||'-'}</td><td class="num">${fmtRp(x.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="no-print"><button class="btn sm outline" data-print-invoice="${x.id}">Cetak</button> <button class="btn sm outline" data-edit-invoice="${x.id}">Edit</button> <button class="btn danger" data-del-invoice="${x.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printInvoice(x){
+  const p = DB.profil;
+  const total = x.items.reduce((s,i)=>s+i.jumlah*i.harga,0);
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    <div class="doc-title-bar">INVOICE</div>
+    <div>No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${x.nomor}</div>
+    <div>Tanggal &nbsp;: ${fmtDate(x.tanggal)}</div>
+    <div class="grid grid-2" style="margin-top:12px;">
+      <div><b>Dari</b><br>${x.dari||'-'}</div>
+      <div><b>Untuk</b><br>${p.namaSekolah||''}<br>${p.alamat||''}${p.desa?', Desa '+p.desa:''}${p.kecamatan?' Kec. '+p.kecamatan:''}</div>
+    </div>
+    <div class="grid grid-2" style="margin-top:12px;">
+      <div><b>Metode Pembayaran</b><br>${x.metodeBayar||'-'}</div>
+      <div><b>Metode Pengiriman</b><br>${x.metodeKirim||'-'}</div>
+    </div>
+    <table class="doc-table" style="margin-top:14px;"><thead><tr><th style="width:34px;">No</th><th>Uraian Barang/Jasa</th><th class="num">Jumlah (QTY)</th><th>Satuan Ukuran</th><th class="num">Harga Satuan</th><th class="num">Total Harga</th></tr></thead>
+    <tbody>${x.items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.nama}</td><td class="num">${i.jumlah}</td><td>${i.satuan}</td><td class="num">${Number(i.harga).toLocaleString('id-ID')}</td><td class="num">${(i.jumlah*i.harga).toLocaleString('id-ID')}</td></tr>`).join('')}
+    <tr><td colspan="5" style="text-align:right;"><b>Total Pembayaran</b></td><td class="num"><b>${total.toLocaleString('id-ID')}</b></td></tr></tbody></table>
+    <p style="margin-top:14px;">** Pembayaran sudah Lunas dan Terkonfirmasi dengan Nominal:</p>
+    <div class="doc-total-box">Rp ${total.toLocaleString('id-ID')}</div>
+    <p>Terbilang &nbsp;: <i>${terbilang(total)}</i></p>
+    <p class="hint">** Invoice ini berlaku sebagai bukti pembayaran yang sah.</p>
+    <div style="text-align:right;margin-top:30px;">
+      Owner / Pemilik
+      <div style="height:56px;"></div>
+      <b style="text-decoration:underline;">${x.dari||''}</b>
+    </div>
+    <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
+  </div>`;
+  document.getElementById('dokPrintArea').scrollIntoView({behavior:'smooth'});
+}
+
+/* ============ SPK (Surat Perintah Kerja) ============ */
+function renderSpkTab(){
+  const rows = DB.spk;
+  const editing = spkEditingId ? rows.find(x=>x.id===spkEditingId) : null;
+  return `
+  <div class="card no-print">
+    <h2>Isi Otomatis dari Nota Pesanan</h2>
+    <div class="field"><label>Nota Pesanan</label><select id="sp_fromNota"><option value="">— pilih —</option>${notaOptionsHtml(editing?editing.sourceNotaId:'')}</select></div>
+    <button class="btn outline" id="btnFillSpkFromNota">Isi dari Nota Pesanan</button>
+  </div>
+  <div class="card">
+    <h2>${editing?'Edit SPK':'Buat SPK Baru'}</h2>
+    <div class="row">
+      <div class="field"><label>Nomor SPK</label><input id="sp_nomor" placeholder="024/BKU/SDN 1 MEREMBU/TAHAP 1/2026" value="${editing?editing.nomor:''}"></div>
+      <div class="field"><label>Tanggal SPK</label><input type="date" id="sp_tanggal" value="${editing?editing.tanggal:''}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Paket Pesanan</label><input id="sp_paket" placeholder="mis. Pengadaan ATK" value="${editing?(editing.paket||''):''}"></div>
+      <div class="field"><label>Sumber Dana</label><input id="sp_sumberDana" placeholder="BOSP Tahun 2026" value="${editing?(editing.sumberDana||''):''}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Waktu Pengerjaan Pesanan</label><input id="sp_waktuKerja" placeholder="7 Hari" value="${editing?(editing.waktuKerja||''):''}"></div>
+      <div class="field"><label>Waktu Penyelesaian Pesanan</label><input type="date" id="sp_waktuSelesai" value="${editing?(editing.waktuSelesai||''):''}"></div>
+    </div>
+    <div class="field"><label>Nama Penyedia (untuk tanda tangan Penyedia)</label><input id="sp_penyediaNama" value="${editing?(editing.penyediaNama||''):''}"></div>
+    <div class="field"><label>Daftar barang/jasa (format: nama | jumlah | satuan | harga satuan)</label>
+      <textarea id="sp_items" rows="4" placeholder="Sampul Raport Kelas I | 25 | Buah | 35000">${editing?editing.items.map(i=>`${i.nama} | ${i.jumlah} | ${i.satuan} | ${i.harga}`).join('\n'):''}</textarea>
+    </div>
+    <input type="hidden" id="sp_sourceNotaId" value="${editing?(editing.sourceNotaId||''):''}">
+    <button class="btn gold" id="btnAddSpk">${editing?'Perbarui SPK':'Simpan SPK'}</button>
+    ${editing?' <button class="btn outline" id="btnCancelSpk">Batal Edit</button>':''}
+  </div>
+  <div class="card">
+    <h2>Daftar SPK</h2>
+    ${rows.length===0?'<div class="empty">Belum ada SPK.</div>':`
+    <table><thead><tr><th>Nomor</th><th>Tanggal</th><th>Paket Pesanan</th><th class="num">Total</th><th class="no-print"></th></tr></thead>
+    <tbody>${rows.map(x=>`<tr><td class="mono">${x.nomor}</td><td>${fmtDate(x.tanggal)}</td><td>${x.paket||'-'}</td><td class="num">${fmtRp(x.items.reduce((s,i)=>s+i.jumlah*i.harga,0))}</td><td class="no-print"><button class="btn sm outline" data-print-spk="${x.id}">Cetak</button> <button class="btn sm outline" data-edit-spk="${x.id}">Edit</button> <button class="btn danger" data-del-spk="${x.id}">Hapus</button></td></tr>`).join('')}</tbody></table>`}
+  </div>`;
+}
+function printSpk(x){
+  const p = DB.profil;
+  const total = x.items.reduce((s,i)=>s+i.jumlah*i.harga,0);
+  document.getElementById('dokPrintArea').innerHTML = `
+  <div class="card">
+    <div class="doc-title-bar">SURAT PERINTAH KERJA (SPK)</div>
+    <table class="doc-info-table">
+      <tr><td style="width:260px;"><b>Surat Perintah Kerja (SPK)</b></td><td><b>Nama Satuan Pendidikan:</b><br>${p.namaSekolah||''}</td></tr>
+      <tr><td>Paket Pesanan:<br>${x.paket||'-'}</td><td>
+        Nomor SPK &nbsp;: ${x.nomor}<br>
+        Tanggal SPK &nbsp;: ${fmtDate(x.tanggal)}<br>
+        Sumber Dana &nbsp;: ${x.sumberDana||'-'}
+      </td></tr>
+      <tr><td colspan="2">Waktu Pengerjaan Pesanan &nbsp;: ${x.waktuKerja||'-'}<br>Waktu Penyelesaian Pesanan &nbsp;: ${fmtDate(x.waktuSelesai)}</td></tr>
+    </table>
+    <p><b>Rincian Pekerjaan / Pesanan</b></p>
+    <table class="doc-table"><thead><tr><th style="width:34px;">No</th><th>Uraian Barang/Jasa</th><th class="num">Jumlah (QTY)</th><th>Satuan Ukuran</th><th class="num">Harga Satuan</th><th class="num">Total Harga</th></tr></thead>
+    <tbody>${x.items.map((i,idx)=>`<tr><td>${idx+1}</td><td>${i.nama}</td><td class="num">${i.jumlah}</td><td>${i.satuan}</td><td class="num">${Number(i.harga).toLocaleString('id-ID')}</td><td class="num">${(i.jumlah*i.harga).toLocaleString('id-ID')}</td></tr>`).join('')}
+    <tr><td colspan="5" style="text-align:right;"><b>Total Pembayaran</b></td><td class="num"><b>${total.toLocaleString('id-ID')}</b></td></tr></tbody></table>
+    <p>Terbilang &nbsp;: <i>${terbilang(total)}</i></p>
+    <p style="margin-top:16px;"><b>Hak dan Kewajiban Penyedia dan Satuan Pendidikan:</b></p>
+    <ol style="padding-left:18px;">
+      <li>Penyedia berkewajiban untuk menyediakan barang/jasa sesuai dengan surat pesanan dan dalam jangka waktu transaksi yang berlaku.</li>
+      <li>Penyedia berhak memintakan pembayaran sesuai total pembayaran setelah penyelesaian pekerjaan yang dimintakan pada Surat Pesanan ini dan dibuktikan dengan Berita Acara Serah Terima.</li>
+      <li>Pelaksana dalam kapasitas mewakili Satuan Pendidikan berhak untuk mendapatkan barang atau jasa sesuai Surat Pesanan ini.</li>
+      <li>Pelaksana berhak menolak barang/jasa yang tidak sesuai dengan surat pesanan.</li>
+      <li>Pelaksana dalam kapasitas mewakili Satuan Pendidikan berkewajiban untuk menyelesaikan pembayaran sesuai dengan mekanisme pembayaran yang berlaku pada sistem.</li>
+      <li>Segala perselisihan yang timbul dari Surat Pesanan ini diselesaikan antara para pihak sesuai ketentuan yang berlaku.</li>
+    </ol>
+    <div class="ttd-row ttd-2">
+      <div class="ttd-slot">Penyedia,
+        <div class="ttd-gap"></div>
+        <b style="text-decoration:underline;">${x.penyediaNama||''}</b>
+      </div>
+      <div class="ttd-slot">${lokasiTtd()}, ${fmtDate(x.tanggal)}<br>Pelaksana,
+        <div class="ttd-gap"></div>
+        <b style="text-decoration:underline;">${p.bendahara||''}</b><br>NIP. ${p.nipBendahara||'-'}
+      </div>
     </div>
     <div class="no-print" style="margin-top:14px;"><button class="btn outline" onclick="window.print()">Cetak</button></div>
   </div>`;
