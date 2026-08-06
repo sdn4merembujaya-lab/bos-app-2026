@@ -326,7 +326,7 @@ function renderLogin(){
       <div class="field"><label>Kata Sandi</label><input type="password" id="login_password" placeholder="kata sandi"></div>
       <div id="loginError" style="color:var(--red);font-size:12.5px;margin-bottom:8px;"></div>
       <button class="btn gold" id="btnLogin" style="width:100%;">Masuk</button>
-      <div class="hint" style="text-align:center;margin-top:14px;">Default: admin/admin123 atau bendahara/bendahara123 — segera ganti di menu Pengaturan Akun setelah masuk.</div>
+      <div class="hint" style="text-align:center;margin-top:14px;">© 2026 DEE 4 MEREMBU  • All Rights Reserved.</div>
     </div>
   </div>`;
   document.getElementById('btnLogin').addEventListener('click', doLogin);
@@ -834,25 +834,41 @@ function printKwitansi(k){
   document.getElementById('dokPrintArea').innerHTML = `
   <div class="card">
     ${letterheadFull()}
-    <div style="border:2px solid #173254;padding:16px;">
-      <div style="background:#d9d9d9;text-align:center;font-weight:700;font-size:16px;padding:8px;margin-bottom:14px;">KWITANSI PEMBAYARAN</div>
-      <div class="grid grid-2">
-        <div>
-          <div>No. Bukti&nbsp; : ${k.nomor}</div>
-          <div>Tanggal&nbsp;&nbsp;&nbsp; : ${fmtDate(k.tanggal)}</div>
-        </div>
-        <div>
-          <div>Kode Kegiatan &nbsp;: ${k.kodeKegiatan||'-'}</div>
-          <div>Kode Rekening &nbsp;: ${k.kodeRekening||'-'}</div>
-          <div>Tahun Anggaran : ${p.tahunAnggaran}</div>
-        </div>
-      </div>
-      <br>
-      <div>Telah diterima dari &nbsp;: ${k.dari}</div>
-      <div>Uang sebanyak &nbsp;&nbsp;&nbsp;&nbsp;: <i>${terbilang(k.jumlah)}</i></div>
-      <div>Guna membayar &nbsp;&nbsp;: ${k.untuk}</div>
-      <br>
-      <div style="border:2px solid #b8862f;border-radius:6px;display:inline-block;padding:8px 24px;font-weight:700;font-size:18px;">Rp ${Number(k.jumlah).toLocaleString('id-ID')}</div>
+    <div style="border:2px solid #173254;padding:14px 18px;font-size:12.5px;line-height:1.55;">
+      <div style="background:#d9d9d9;text-align:center;font-weight:700;font-size:15px;padding:7px;margin-bottom:12px;letter-spacing:.03em;">KWITANSI PEMBAYARAN</div>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
+        <tr>
+          <td style="width:90px;vertical-align:top;padding:1px 0;">No. Bukti</td>
+          <td style="width:14px;vertical-align:top;">:</td>
+          <td style="vertical-align:top;padding:1px 0;">${k.nomor}</td>
+          <td style="width:110px;vertical-align:top;padding:1px 0;padding-left:16px;">Kode Kegiatan</td>
+          <td style="width:14px;vertical-align:top;">:</td>
+          <td style="vertical-align:top;padding:1px 0;">${k.kodeKegiatan||'-'}</td>
+        </tr>
+        <tr>
+          <td style="vertical-align:top;padding:1px 0;">Tanggal</td>
+          <td style="vertical-align:top;">:</td>
+          <td style="vertical-align:top;padding:1px 0;">${fmtDate(k.tanggal)}</td>
+          <td style="vertical-align:top;padding:1px 0;padding-left:16px;">Kode Rekening</td>
+          <td style="vertical-align:top;">:</td>
+          <td style="vertical-align:top;padding:1px 0;">${k.kodeRekening||'-'}</td>
+        </tr>
+        <tr>
+          <td></td><td></td><td></td>
+          <td style="vertical-align:top;padding:1px 0;padding-left:16px;">Tahun Anggaran</td>
+          <td style="vertical-align:top;">:</td>
+          <td style="vertical-align:top;padding:1px 0;">${p.tahunAnggaran}</td>
+        </tr>
+      </table>
+
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+        <tr><td style="width:150px;vertical-align:top;padding:1px 0;">Telah diterima dari</td><td style="width:14px;">:</td><td style="padding:1px 0;">${k.dari}</td></tr>
+        <tr><td style="vertical-align:top;padding:1px 0;">Uang sebanyak</td><td>:</td><td style="padding:1px 0;"><i>${terbilang(k.jumlah)}</i></td></tr>
+        <tr><td style="vertical-align:top;padding:1px 0;">Guna membayar</td><td>:</td><td style="padding:1px 0;">${k.untuk}</td></tr>
+      </table>
+
+      <div style="border:2px solid #b8862f;border-radius:6px;display:inline-block;padding:7px 22px;font-weight:700;font-size:17px;color:#173254;">Rp ${Number(k.jumlah).toLocaleString('id-ID')}</div>
 
       <!-- Baris tanda tangan: kiri = Kepala Sekolah, tengah = Bendahara, kanan = Penerima/Penyedia.
            Dipaksa tetap 3 kolom sejajar saat dicetak (lihat aturan @media print di <head>). -->
