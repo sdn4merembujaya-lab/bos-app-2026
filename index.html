@@ -1087,26 +1087,91 @@ const SPJ_CHECKLIST = {
   ]
 };
 
+/* Peta index item checklist -> jenis dokumen yang bisa dideteksi otomatis dari data
+   yang sudah dibuat di menu "Kwitansi, Nota & Surat". Item ini akan tercentang sendiri
+   begitu dokumen yang cocok (berdasarkan kemiripan keterangan kegiatan) sudah dibuat. */
+const SPJ_AUTO_LINK = {
+  'Honorarium Pendidik dan Tenaga Kependidikan Non ASN': {0:'kwitansi'},
+  'Perjalanan Dinas': {0:'kwitansi', 2:'sppd', 4:'suratTugas'},
+  'Pembelian Makanan dan Minuman': {0:'kwitansi'},
+  'Belanja Pengadaan Barang': {1:'kwitansi', 4:'nota'},
+  'Jasa Tukang/Ongkos Tukang': {0:'kwitansi'},
+  'Jasa Pelatih Ekstrakurikuler': {0:'kwitansi'},
+  'Pendaftaran Lomba-Lomba': {0:'kwitansi'},
+  'Jasa Retribusi/Pengangkutan Sampah': {0:'kwitansi'},
+  'Langganan Daya dan Jasa (Listrik/Air/Indihome)': {0:'kwitansi'},
+  'Paket Data dan Langganan Koran': {0:'kwitansi'},
+  'Sewa': {0:'kwitansi'}
+};
+const SPJ_AUTO_LABEL = {kwitansi:'Kwitansi', sppd:'SPPD', suratTugas:'Surat Tugas', nota:'Nota Pesanan'};
+
+function normalisasiTeks(s){
+  return String(s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+function skorKemiripan(a,b){
+  const wa = new Set(normalisasiTeks(a).split(' ').filter(w=>w.length>=4));
+  const wb = new Set(normalisasiTeks(b).split(' ').filter(w=>w.length>=4));
+  if(wa.size===0 || wb.size===0) return 0;
+  let sama = 0;
+  wa.forEach(w=>{ if(wb.has(w)) sama++; });
+  return sama;
+}
+/* Cari dokumen (kwitansi/SPPD/surat tugas/nota) yang paling cocok dengan keterangan checklist */
+function cariDokumenCocok(jenis, uraian){
+  if(!uraian) return null;
+  let kandidat = [];
+  if(jenis==='kwitansi') kandidat = DB.kwitansi.map(d=>({doc:d, teks:d.untuk}));
+  else if(jenis==='sppd') kandidat = DB.sppd.map(d=>({doc:d, teks:d.maksud}));
+  else if(jenis==='suratTugas') kandidat = DB.suratTugas.map(d=>({doc:d, teks:d.tugas}));
+  else if(jenis==='nota') kandidat = DB.notaPesanan.map(d=>({doc:d, teks:(d.kepada||'')+' '+(d.items||[]).map(i=>i.nama).join(' ')}));
+  let terbaik = null, skorTerbaik = 0;
+  kandidat.forEach(k=>{
+    const skor = skorKemiripan(uraian, k.teks);
+    if(skor > skorTerbaik){ skorTerbaik = skor; terbaik = k.doc; }
+  });
+  return skorTerbaik > 0 ? terbaik : null;
+}
+/* Status satu baris checklist: otomatis (terdeteksi dari dokumen) atau manual (dicentang sendiri) */
+function statusItemChecklist(c, idx){
+  const jenis = (SPJ_AUTO_LINK[c.kategori]||{})[idx];
+  if(jenis){
+    const match = cariDokumenCocok(jenis, c.uraian);
+    if(match) return {checked:true, otomatis:true, jenis, match};
+    return {checked:!!(c.items[idx]&&c.items[idx].checked), otomatis:false, jenis, match:null};
+  }
+  return {checked:!!(c.items[idx]&&c.items[idx].checked), otomatis:false, jenis:null, match:null};
+}
+
 function pageChecklist(){
   const rows = DB.checklistSpj;
   const kategoriOpt = Object.keys(SPJ_CHECKLIST).map(k=>`<option value="${k}">${k}</option>`).join('');
   return `
-  ${head('Pelaporan','Checklist SPJ','Buat checklist kelengkapan dokumen SPJ otomatis sesuai jenis kegiatan.')}
+  ${head('Pelaporan','Checklist SPJ','Checklist kelengkapan dokumen SPJ otomatis sesuai jenis kegiatan — item yang dokumennya sudah dibuat di menu Kwitansi, Nota & Surat akan tercentang sendiri.')}
   <div class="card">
     <h2>Buat Checklist Baru</h2>
     <div class="row">
       <div class="field"><label>Jenis Kegiatan</label><select id="c_kategori">${kategoriOpt}</select></div>
       <div class="field"><label>Keterangan (uraian kegiatan)</label><input id="c_uraian" placeholder="mis. Honor Guru Bulan Agustus 2026"></div>
     </div>
+    <p class="hint">Gunakan keterangan yang sama/mirip dengan yang ditulis pada Kwitansi, SPPD, atau Surat Tugas terkait (mis. "Bimtek Pengelolaan Dana BOS di Mataram") agar sistem bisa mencocokkan dan mencentang dokumen tersebut secara otomatis.</p>
     <button class="btn gold" id="btnAddChecklist">Buat Checklist</button>
   </div>
   ${rows.length===0?'<div class="empty">Belum ada checklist SPJ dibuat.</div>':rows.map(c=>{
-    const done = c.items.filter(i=>i.checked).length;
+    const statuses = c.items.map((it,idx)=>statusItemChecklist(c,idx));
+    const done = statuses.filter(s=>s.checked).length;
+    const adaOtomatis = statuses.some(s=>s.otomatis);
     return `<div class="card">
       <h2>${c.uraian || c.kategori} <span class="hint">(${c.kategori})</span></h2>
-      <p class="hint">${done} dari ${c.items.length} dokumen sudah lengkap</p>
+      <p class="hint">${done} dari ${c.items.length} dokumen sudah lengkap${adaOtomatis?' — sebagian tercentang otomatis dari dokumen yang sudah dibuat':''}</p>
       <table><tbody>
-        ${c.items.map((it,idx)=>`<tr><td style="width:30px;"><input type="checkbox" data-checklist-item="${c.id}|${idx}" ${it.checked?'checked':''}></td><td>${it.text}</td></tr>`).join('')}
+        ${c.items.map((it,idx)=>{
+          const st = statuses[idx];
+          if(st.otomatis){
+            return `<tr><td style="width:30px;">✅</td><td>${it.text} <span class="tag masuk" style="margin-left:6px;">Otomatis — ${SPJ_AUTO_LABEL[st.jenis]}${st.match.nomor?(' '+st.match.nomor):''}</span></td></tr>`;
+          }
+          const petunjuk = st.jenis ? `<div class="hint">Akan tercentang otomatis begitu ${SPJ_AUTO_LABEL[st.jenis]} dengan keterangan yang cocok dibuat di menu Kwitansi, Nota & Surat.</div>` : '';
+          return `<tr><td style="width:30px;"><input type="checkbox" data-checklist-item="${c.id}|${idx}" ${it.checked?'checked':''}></td><td>${it.text}${petunjuk}</td></tr>`;
+        }).join('')}
       </tbody></table>
       <div class="no-print" style="margin-top:10px;"><button class="btn danger" data-del-checklist="${c.id}">Hapus Checklist</button></div>
     </div>`;
